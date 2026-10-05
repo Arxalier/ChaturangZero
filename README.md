@@ -8,6 +8,8 @@ This repository implements the **Murray/Golombek ruleset** with complete test co
 
 ## The Rules of Chaturanga (Murray/Golombek Ruleset)
 
+Note: The source used to study the Murray/Golombek Ruleset is https://www.chessvariants.com/historic.dir/chaturanga.html
+
 ### 1. The Board & Setup
 - **Ashtapada**: An 8x8 uncheckered board.
 - **Symmetry**: 16 pieces per player mirroring each other.
