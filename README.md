@@ -54,6 +54,11 @@ ChaturangZero/
 │   ├── test_moves.py        # Move tests for all piece types & leaps
 │   ├── test_rules.py        # Check, promotion, bare king, stalemate tests
 │   └── test_perft.py        # Perft node count verification
+├── ui/                      # Browser UI for demos (stdlib server + static page)
+│   ├── server.py            # JSON API over the engine, no extra dependencies
+│   ├── engine_api.py        # Engine output -> JSON, plus an engine call trace
+│   ├── scenarios.py         # Seven preset demo positions
+│   └── static/              # index.html, style.css, app.js
 ├── play.py                  # Interactive CLI play loop
 ├── perft.py                 # CLI perft performance benchmark tool
 ├── requirements.txt         # Package dependencies
@@ -79,6 +84,20 @@ python play.py
 ```
 Move format: `start_row,start_col end_row,end_col` (e.g. `6,4 5,4`).
 Type `perft <depth>` during the game to run tree calculations, or `q` to quit.
+
+### Visual Engine Explorer (presentation UI)
+Launch a browser UI that exposes every part of the engine built so far — board, legal
+moves, pseudo-legal vs legal filtering, check and threat maps, terminal states, perft,
+and the raw int8 board tensor:
+```bash
+python ui/server.py
+```
+It opens `http://127.0.0.1:8000`. The page is drawing only: every rule decision comes
+from the `chaturanga` package over a small JSON API, so the UI cannot disagree with the
+engine. It needs no dependencies beyond the `numpy` the engine already uses.
+Press <kbd>1</kbd>–<kbd>7</kbd> for preset demo positions (checkmate in 1, stalemate,
+baring the King, an absolute pin, promotion, leapers in a crowd). See
+[ui/README.md](ui/README.md) for deep links and shortcuts.
 
 ### Running Automated Tests
 Run the complete test suite with `pytest`:
