@@ -296,10 +296,10 @@ Used by the Convolutional Neural Network (CNN/ResNet) for Policy and Value predi
 
 To keep the AlphaZero action space simple and computationally feasible on consumer hardware, actions are modeled as a **flattened from-square to to-square mapping**:
 
-$$\text{Action Space Size} = 64 \text{ (from-squares)} \times 64 \text{ (to-squares)} = 4,096$$
+$$\text{Action Space Size} = 64 \times 64 = 4096$$
 
-* Square index: $\text{sq} = r \times 8 + c \quad (0 \le \text{sq} < 64)$
-* Action index: $a = \text{start\_sq} \times 64 + \text{end\_sq} \quad (0 \le a < 4,096)$
+* Square index: `sq = r * 8 + c` (where $0 \le \text{sq} < 64$)
+* Action index: `action = start_sq * 64 + end_sq` (where $0 \le \text{action} < 4096$)
 * **Illegal Move Masking**: Out of 4,096 theoretical moves, typically only 15–35 are legal at any turn. Before computing softmax in the Policy Head, illegal action indices are masked with $-\infty$, guaranteeing that the network only samples strictly legal moves.
 
 ---
