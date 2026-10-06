@@ -41,6 +41,8 @@ class ChaturangaEnv:
         self.current_player: int = WHITE
         self.board: np.ndarray = self._create_starting_board()
         self.move_history: List[Move] = []
+        self._cached_legal_moves: Optional[List[Move]] = None
+        self._cached_outcome: Optional[int] = None
 
     def _create_starting_board(self) -> np.ndarray:
         """Sets up the initial Chaturanga board (Murray/Golombek symmetry)."""
@@ -51,11 +53,15 @@ class ChaturangaEnv:
         self.current_player = WHITE
         self.board = self._create_starting_board()
         self.move_history.clear()
+        self._cached_legal_moves = None
+        self._cached_outcome = None
         return self.board
 
     def get_legal_moves(self) -> List[Move]:
         """Returns all strictly legal moves for the current player."""
-        return get_all_legal_moves(self.board, self.current_player)
+        if self._cached_legal_moves is None:
+            self._cached_legal_moves = get_all_legal_moves(self.board, self.current_player)
+        return self._cached_legal_moves
 
     def is_in_check(self, player: Optional[int] = None) -> bool:
         """Checks if the given player (or current player) is in check."""
@@ -78,23 +84,25 @@ class ChaturangaEnv:
         self.board = make_move(self.board, start_pos, end_pos)
         self.move_history.append(move)
 
-        # Evaluate outcome for next player
+        # Transition to next player and evaluate outcome
         next_player = -self.current_player
-        outcome_for_next = get_game_outcome(self.board, next_player)
-        done = outcome_for_next is not None
+        self.current_player = next_player
+        self._cached_legal_moves = get_all_legal_moves(self.board, self.current_player)
+        self._cached_outcome = get_game_outcome(self.board, self.current_player, self._cached_legal_moves)
 
-        # Determine outcome from perspective of player who just moved
-        if outcome_for_next is not None:
-            outcome = -outcome_for_next if outcome_for_next != 0 else 0
+        done = self._cached_outcome is not None
+        if done:
+            outcome = -self._cached_outcome if self._cached_outcome != 0 else 0
         else:
             outcome = None
 
-        self.current_player = next_player
         return self.board, outcome, done
 
     def get_outcome(self) -> Optional[int]:
         """Returns the game outcome for the current player, or None if ongoing."""
-        return get_game_outcome(self.board, self.current_player)
+        if self._cached_outcome is None:
+            self._cached_outcome = get_game_outcome(self.board, self.current_player, self.get_legal_moves())
+        return self._cached_outcome
 
     def is_game_over(self) -> bool:
         """Checks if the game has ended."""
@@ -111,4 +119,6 @@ class ChaturangaEnv:
         new_env.board = self.board.copy()
         new_env.current_player = self.current_player
         new_env.move_history = list(self.move_history)
+        new_env._cached_legal_moves = list(self._cached_legal_moves) if self._cached_legal_moves is not None else None
+        new_env._cached_outcome = self._cached_outcome
         return new_env

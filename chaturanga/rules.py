@@ -43,45 +43,78 @@ def find_king(board: np.ndarray, player: int) -> Optional[Tuple[int, int]]:
     Returns None if the King is not present on the board.
     """
     target_king = KING * player
-    result = np.where(board == target_king)
-    if len(result[0]) > 0:
-        return (int(result[0][0]), int(result[1][0]))
+    for r in range(8):
+        for c in range(8):
+            if board[r, c] == target_king:
+                return (r, c)
     return None
 
 
 def is_in_check(board: np.ndarray, player: int) -> bool:
     """
     Determines if the specified player's King is under attack by any enemy piece.
+    Optimized via direct attack rays and jumps from the King's position.
     """
     king_pos = find_king(board, player)
     if not king_pos:
         return False
 
+    kr, kc = king_pos
     enemy = -player
+    enemy_chariot = CHARIOT * enemy
+    enemy_horse = HORSE * enemy
+    enemy_elephant = ELEPHANT * enemy
+    enemy_minister = MINISTER * enemy
+    enemy_king = KING * enemy
+    enemy_pawn = PAWN * enemy
 
-    # Iterate through the entire board looking for enemy pieces
-    for r in range(8):
-        for c in range(8):
-            piece = board[r, c]
-            if piece * enemy > 0:
-                enemy_moves = []
-                abs_piece = abs(piece)
-
-                if abs_piece == PAWN:
-                    enemy_moves = get_pawn_moves(board, r, c, enemy)
-                elif abs_piece == HORSE:
-                    enemy_moves = get_horse_moves(board, r, c, enemy)
-                elif abs_piece == ELEPHANT:
-                    enemy_moves = get_elephant_moves(board, r, c, enemy)
-                elif abs_piece == CHARIOT:
-                    enemy_moves = get_chariot_moves(board, r, c, enemy)
-                elif abs_piece == MINISTER:
-                    enemy_moves = get_minister_moves(board, r, c, enemy)
-                elif abs_piece == KING:
-                    enemy_moves = get_king_moves(board, r, c, enemy)
-
-                if king_pos in enemy_moves:
+    # 1. Chariot rays (orthogonal)
+    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        r, c = kr + dr, kc + dc
+        while 0 <= r < 8 and 0 <= c < 8:
+            p = board[r, c]
+            if p != 0:
+                if p == enemy_chariot:
                     return True
+                break
+            r += dr
+            c += dc
+
+    # 2. Horse leaps (8 jumps)
+    for dr, dc in ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)):
+        r, c = kr + dr, kc + dc
+        if 0 <= r < 8 and 0 <= c < 8 and board[r, c] == enemy_horse:
+            return True
+
+    # 3. Elephant leaps (4 diagonal 2-square jumps)
+    for dr, dc in ((-2, -2), (-2, 2), (2, -2), (2, 2)):
+        r, c = kr + dr, kc + dc
+        if 0 <= r < 8 and 0 <= c < 8 and board[r, c] == enemy_elephant:
+            return True
+
+    # 4. Minister steps (4 diagonal 1-square steps)
+    for dr, dc in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+        r, c = kr + dr, kc + dc
+        if 0 <= r < 8 and 0 <= c < 8 and board[r, c] == enemy_minister:
+            return True
+
+    # 5. King steps (all 8 adjacent squares)
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            if dr == 0 and dc == 0:
+                continue
+            r, c = kr + dr, kc + dc
+            if 0 <= r < 8 and 0 <= c < 8 and board[r, c] == enemy_king:
+                return True
+
+    # 6. Pawn captures
+    # White pawn moves row - 1, captures diagonally forward (-1, +/-1). Attacking Black King from kr + 1.
+    # Black pawn moves row + 1, captures diagonally forward (+1, +/-1). Attacking White King from kr - 1.
+    pawn_row = kr - 1 if player == 1 else kr + 1
+    if 0 <= pawn_row < 8:
+        for pawn_col in (kc - 1, kc + 1):
+            if 0 <= pawn_col < 8 and board[pawn_row, pawn_col] == enemy_pawn:
+                return True
 
     return False
 
@@ -125,10 +158,19 @@ def get_all_legal_moves(board: np.ndarray, player: int) -> List[Move]:
     return legal_moves
 
 
-def get_game_outcome(board: np.ndarray, player: int) -> Optional[int]:
+def get_game_outcome(
+    board: np.ndarray,
+    player: int,
+    legal_moves: Optional[List[Move]] = None
+) -> Optional[int]:
     """
     Evaluates the board to see if the game has ended.
     
+    Args:
+        board: 8x8 numpy array
+        player: Current player to move (1 for White, -1 for Black)
+        legal_moves: Optional precomputed list of legal moves to avoid redundant recomputation.
+        
     Returns:
          1 if 'player' wins
         -1 if 'player' loses
@@ -138,17 +180,25 @@ def get_game_outcome(board: np.ndarray, player: int) -> Optional[int]:
     enemy = -player
 
     # 1. Bare King Rule (Insta-win if opponent has only 1 piece left: their King)
-    enemy_pieces = np.count_nonzero(board[board * enemy > 0])
-    if enemy_pieces == 1:
+    enemy_count = 0
+    player_count = 0
+    for r in range(8):
+        for c in range(8):
+            val = board[r, c]
+            if val * enemy > 0:
+                enemy_count += 1
+            elif val * player > 0:
+                player_count += 1
+
+    if enemy_count == 1:
         return 1  # Player wins! Opponent's King is bared.
 
-    # Check if the player themselves was bared
-    player_pieces = np.count_nonzero(board[board * player > 0])
-    if player_pieces == 1:
-        return -1  # Player loses.
+    if player_count == 1:
+        return -1  # Player loses. Own King is bared.
 
     # 2. Checkmate and Stalemate
-    legal_moves = get_all_legal_moves(board, player)
+    if legal_moves is None:
+        legal_moves = get_all_legal_moves(board, player)
 
     if len(legal_moves) == 0:
         if is_in_check(board, player):
@@ -164,12 +214,14 @@ def perft(board: np.ndarray, player: int, depth: int) -> int:
     Recursively counts all leaf nodes in the game tree up to a given depth.
     Used for verifying move generator correctness and consistency.
     """
-    if depth == 0:
+    if depth <= 0:
         return 1
 
-    nodes = 0
     legal_moves = get_all_legal_moves(board, player)
+    if depth == 1:
+        return len(legal_moves)
 
+    nodes = 0
     for move in legal_moves:
         next_board = make_move(board, move[0], move[1])
 
