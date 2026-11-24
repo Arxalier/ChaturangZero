@@ -144,7 +144,17 @@ class NeuralMCTS:
         else:
             self.device = "cpu"
 
-    def search(self, initial_board: np.ndarray, current_player: int, add_dirichlet: bool = False) -> MCTSNode:
+    def search(
+        self,
+        initial_board: np.ndarray,
+        current_player: int,
+        add_dirichlet: bool = False,
+        past_position_counts: Optional[Dict[bytes, int]] = None
+    ) -> MCTSNode:
+        """
+        Executes MCTS simulations from current root.
+        Natively evaluates 3-fold repetition as terminal draw (0.0).
+        """
         root_node = MCTSNode(current_player=current_player)
 
         # Expand root immediately
@@ -164,11 +174,18 @@ class NeuralMCTS:
 
         root_node.expand(action_probs)
 
+        # Base history tracking for 3-fold repetition awareness in search tree
+        root_key = initial_board.tobytes() + bytes([1 if current_player == 1 else 0])
+        base_counts = dict(past_position_counts) if past_position_counts else {}
+        base_counts[root_key] = base_counts.get(root_key, 0) + 1
+
         # Run MCTS simulations
         for _ in range(self.num_simulations):
             node = root_node
             board = initial_board.copy()
             search_path = [node]
+            sim_counts = dict(base_counts)
+            is_rep_draw = False
 
             # 1. Selection
             while node.is_expanded():
@@ -180,18 +197,28 @@ class NeuralMCTS:
                 node = best_child
                 search_path.append(node)
 
-            # 2. Evaluation & Expansion (single legal move computation)
-            legal = get_all_legal_moves(board, node.current_player)
-            outcome = get_game_outcome(board, node.current_player, legal_moves=legal)
+                pos_key = board.tobytes() + bytes([1 if node.current_player == 1 else 0])
+                sim_counts[pos_key] = sim_counts.get(pos_key, 0) + 1
+                if sim_counts[pos_key] >= 3:
+                    is_rep_draw = True
+                    break
 
-            if outcome is not None:
-                value = float(outcome)
-            elif not legal:
+            # 2. Evaluation & Expansion
+            if is_rep_draw:
+                # 3-fold repetition terminal draw evaluated natively as 0.0
                 value = 0.0
             else:
-                action_probs, leaf_value = self._evaluate(board, node.current_player, legal)
-                node.expand(action_probs)
-                value = leaf_value
+                legal = get_all_legal_moves(board, node.current_player)
+                outcome = get_game_outcome(board, node.current_player, legal_moves=legal)
+
+                if outcome is not None:
+                    value = float(outcome)
+                elif not legal:
+                    value = 0.0
+                else:
+                    action_probs, leaf_value = self._evaluate(board, node.current_player, legal)
+                    node.expand(action_probs)
+                    value = leaf_value
 
             # 3. Backpropagation (zero-sum alternating perspective)
             leaf_player = node.current_player
@@ -261,33 +288,31 @@ class NeuralMCTS:
 
 
 class ChaturangPlayer(BasePlayer):
-    """Universal player wrapper implementing BasePlayer with configurable Elo degradation and anti-repetition guard."""
+    """Universal player wrapper implementing BasePlayer with configurable Elo degradation and game-theoretic repetition awareness."""
     def __init__(
         self,
         model=None,
         num_sims: int = 40,
         temperature: float = 0.1,
         top_k: Optional[int] = None,
-        blunder_rate: float = 0.0,
-        avoid_repetition: bool = True
+        blunder_rate: float = 0.0
     ):
         self.num_sims = num_sims
         self.temperature = temperature
         self.top_k = top_k
         self.blunder_rate = blunder_rate
-        self.avoid_repetition = avoid_repetition
-        self.visited_positions = set()
+        self.position_counts: Dict[bytes, int] = {}
         self.mcts = NeuralMCTS(model=model, num_simulations=num_sims)
 
     def reset(self):
         """Clears visited positions for a fresh game."""
-        self.visited_positions.clear()
+        self.position_counts.clear()
 
     def get_move(
         self,
         board: np.ndarray,
         player: int,
-        past_positions: Optional[Set[bytes]] = None
+        past_position_counts: Optional[Dict[bytes, int]] = None
     ) -> Move:
         legal_moves = get_all_legal_moves(board, player)
         if not legal_moves:
@@ -297,28 +322,12 @@ class ChaturangPlayer(BasePlayer):
         if self.blunder_rate > 0.0 and random.random() < self.blunder_rate:
             return random.choice(legal_moves)
 
-        pos_bytes = board.tobytes()
-        self.visited_positions.add(pos_bytes)
+        pos_key = board.tobytes() + bytes([1 if player == 1 else 0])
+        self.position_counts[pos_key] = self.position_counts.get(pos_key, 0) + 1
 
-        effective_past = set(self.visited_positions)
-        if past_positions:
-            effective_past.update(past_positions)
-
-        def _filter_repetition(candidate_moves, candidate_probs):
-            if not self.avoid_repetition or len(candidate_moves) <= 1:
-                return candidate_moves, candidate_probs
-            non_repeating_moves = []
-            non_repeating_probs = []
-            for m, p in zip(candidate_moves, candidate_probs):
-                next_b = make_move(board, m[0], m[1])
-                if next_b.tobytes() not in effective_past:
-                    non_repeating_moves.append(m)
-                    non_repeating_probs.append(p)
-            if non_repeating_moves:
-                sum_p = sum(non_repeating_probs)
-                norm_p = [p / sum_p for p in non_repeating_probs] if sum_p > 0 else [1.0 / len(non_repeating_moves)] * len(non_repeating_moves)
-                return non_repeating_moves, norm_p
-            return candidate_moves, candidate_probs
+        effective_counts = dict(self.position_counts)
+        if past_position_counts:
+            effective_counts.update(past_position_counts)
 
         # 1. Novice Tier: num_sims == 0 (sample directly from raw policy head with zero lookahead)
         if self.num_sims == 0:
@@ -336,20 +345,18 @@ class ChaturangPlayer(BasePlayer):
                 probs = probs / (sum_p if sum_p > 0 else 1.0)
 
             if self.temperature < 0.05:
-                filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
-                return filt_moves[int(np.argmax(filt_probs))]
+                return moves[int(np.argmax(probs))]
 
             # Safeguard: normalize by max probability before temperature scaling to prevent underflow
             probs = probs / np.max(probs)
             probs = probs ** (1.0 / max(self.temperature, 1e-4))
             sum_p = probs.sum()
             probs = probs / (sum_p if sum_p > 0 else 1.0)
-
-            filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
-            return random.choices(filt_moves, weights=filt_probs, k=1)[0]
+            return random.choices(moves, weights=probs.tolist(), k=1)[0]
 
         # 2. Normal MCTS Lookahead Search (Intermediate / Master Tiers)
-        root = self.mcts.search(board, player, add_dirichlet=False)
+        # Search is natively value-aware of 3-fold repetition: seeks repetition if losing (<0), avoids if winning (>0)
+        root = self.mcts.search(board, player, add_dirichlet=False, past_position_counts=effective_counts)
         dist = self.mcts.get_action_distribution(root, temperature=self.temperature)
 
         if not dist:
@@ -367,8 +374,7 @@ class ChaturangPlayer(BasePlayer):
             sum_p = probs.sum()
             probs = probs / (sum_p if sum_p > 0 else 1.0)
 
-        filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
-        return random.choices(filt_moves, weights=filt_probs, k=1)[0]
+        return random.choices(moves, weights=probs.tolist(), k=1)[0]
 
 
 ChaturangZeroPlayer = ChaturangPlayer

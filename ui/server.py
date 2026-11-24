@@ -258,10 +258,12 @@ class Handler(BaseHTTPRequestHandler):
                 elif route in ("/api/ai_move", "/api/chaturang_move"):
                     from training.mcts_agent import ChaturangPlayer
                     model = get_ai_model()
-                    player = ChaturangPlayer(model=model, num_sims=40, temperature=0.1, avoid_repetition=True)
-                    past_positions = {b.tobytes() for b, _ in SESSION.undo_stack}
-                    past_positions.add(SESSION.env.board.tobytes())
-                    move = player.get_move(SESSION.env.board, SESSION.env.current_player, past_positions=past_positions)
+                    player = ChaturangPlayer(model=model, num_sims=40, temperature=0.1)
+                    pos_counts = {}
+                    for b, p in SESSION.undo_stack:
+                        k = b.tobytes() + bytes([1 if p == 1 else 0])
+                        pos_counts[k] = pos_counts.get(k, 0) + 1
+                    move = player.get_move(SESSION.env.board, SESSION.env.current_player, past_position_counts=pos_counts)
                     start, end = move
                     result = SESSION.play(start, end)
                     result["move"] = [list(start), list(end)]
