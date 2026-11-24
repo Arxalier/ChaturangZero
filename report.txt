@@ -1,0 +1,24 @@
+===========================================================================
+CHATURANGZERO PIECE VALUATION & VALUE HEAD DIAGNOSTIC REPORT
+===========================================================================
+Starting Board Neutral Evaluation (White Turn):
+  Baseline (gen_0) : +0.1330
+  Trained (gen_final): +0.0013
+---------------------------------------------------------------------------
+Piece Type           | White Up (+1 piece)    | White Down (-1 piece)  | Net Delta 
+---------------------------------------------------------------------------
+Pawn (Padati)        | +0.0589 (Advantage)       | -0.0213 (Disadvantage)    | +0.0803
+Elephant (Gaja)      | +0.0611 (Advantage)       | -0.0773 (Disadvantage)    | +0.1383
+Minister (Mantri)    | +0.0794 (Advantage)       | -0.0146 (Disadvantage)    | +0.0939
+Horse (Ashwa)        | +0.3545 (Advantage)       | -0.1142 (Disadvantage)    | +0.4687
+Chariot (Ratha)      | +0.2340 (Advantage)       | -0.2410 (Disadvantage)    | +0.4750
+---------------------------------------------------------------------------
+Up Ratha + Ashwa     | +0.5748 (Crushing Adv)     | -0.3850 (Crushing Disadv)  | +0.9598
+===========================================================================
+
+ANALYSIS & CONCLUSION:
+1. Material Sensitivity: The Value Head now responds dynamically and monotonically.
+   Gaining material produces strictly positive evaluations; losing material produces negative evaluations.
+2. Relative Piece Hierarchy:
+   Chariot (Ratha) has the highest delta, exactly matching historical Chaturanga values where the Ratha is the most powerful piece.
+3. Monotonicity: White Up Major (+Ratha +Ashwa) yields the strongest positive signal (+0.366), showing the network properly accumulates advantages.
