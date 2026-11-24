@@ -70,6 +70,15 @@ ChaturangZero/
 │   ├── board.py             # Board initialization, immutable state transitions, text rendering
 │   ├── rules.py             # Optimized check detection, legal move pruning, outcomes, perft
 │   └── env.py               # ChaturangaEnv RL/Gym environment wrapper with state caching
+├── neural/                  # Deep learning representations & model definitions
+│   ├── encoder.py           # Board to (13, 8, 8) tensor & move to action encoder
+│   └── model.py             # Dual-headed Convolutional ResNet (Policy & Value heads)
+├── training/                # Reinforcement learning & training pipeline
+│   ├── mcts_agent.py        # Neural MCTS, PUCT selection, and ChaturangPlayer
+│   ├── self_play.py         # Curriculum board generation & replay buffer
+│   ├── train.py             # Loss functions & masked optimization loop
+│   └── bootstrap_train.py   # Teacher-guided fine-tuning pipeline
+├── checkpoints/             # Trained weights (gen_final.pt) and metrics logs
 ├── ui/                      # Browser UI for presentations (stdlib HTTP server + JSON API)
 │   ├── server.py            # HTTP server routing API requests and serving static assets
 │   ├── engine_api.py        # Adapter converting engine outputs into JSON with call tracing
@@ -79,12 +88,16 @@ ChaturangZero/
 ├── tests/                   # Automated unit testing suite
 │   ├── __init__.py          # Package initialization
 │   └── test_validity.py     # Unittest suite verifying Perft counts and rollout invariants
+├── discover_values.py       # Heuristic mobility & board centrality discovery tool
+├── test_vs_random.py        # Automated benchmark against uniform random bot
+├── benchmark_experiments.py # Configurable simulation & ply ablation harness
+├── report.txt               # Evaluation report & material diagnostic probe matrix
 ├── mcts.py                  # PUCT-guided Monte Carlo Tree Search (AlphaZero tree search)
 ├── test_mcts.py             # MCTS smoke test with dummy policy/value evaluator
 ├── validity_test.py         # Standalone random rollout fuzz tester & invariant validator
 ├── perft.py                 # Perft tool with root-move breakdown ("divide") and fuzzing
-├── play.py                  # Interactive CLI play loop (2-player human terminal interface)
-├── requirements.txt         # Minimal project dependencies (numpy)
+├── play.py                  # Interactive CLI play loop (supports --ai)
+├── requirements.txt         # Project dependencies (numpy, torch)
 ├── info.txt                 # Quick reference: piece encodings, board logic, 3D tensor map
 ├── info_unit_test.txt       # Technical documentation: testing methodologies & optimizations
 ├── milestone1.txt           # Milestone 1 specification and rules reference
@@ -165,9 +178,14 @@ pip install -r requirements.txt
 ### 2. Visual Engine Explorer (Browser UI)
 Launch the browser UI that visualizes every part of the engine — board, legal moves, pseudo-legal vs legal filtering, check/threat maps, terminal states, perft, and raw board tensors:
 ```bash
+# Standard launch
 python3 ui/server.py
+
+# Launch with trained AI and custom MCTS depth (e.g. 300 simulations)
+python3 ui/server.py --port 8000 --sims 300
 ```
 Open **`http://127.0.0.1:8000`** in your browser.
+* Toggle AI Play mode to play against the trained neural network.
 * Press <kbd>1</kbd>–<kbd>7</kbd> to load preset demo scenarios:
   1. Starting Ashtapada
   2. Checkmate in 1 (Chariot + Minister battery)
@@ -180,13 +198,30 @@ Open **`http://127.0.0.1:8000`** in your browser.
 * See [ui/README.md](ui/README.md) for deeper UI documentation.
 
 ### 3. Interactive Terminal Play
-Play manually from the terminal (2-player human hot-seat):
+Play from the terminal (human vs. human, or human vs. trained AI):
 ```bash
+# 2-player human hot-seat
 python3 play.py
+
+# Play against the trained AI (supports --sims)
+python3 play.py --ai --sims 200
 ```
 * Enter moves as: `start_row,start_col end_row,end_col` (e.g., `6,4 5,4`).
 * Type `perft <depth>` during play to run an instant node count from the current board.
 * Type `q` to quit.
+
+### 4. Benchmark vs. Random Bot
+Run automated 10-game evaluations against a uniform random opponent:
+```bash
+# Run 10 games with 40 MCTS simulations per move
+python3 test_vs_random.py 40 10
+```
+
+### 5. Autonomous Value Discovery
+Calculate piece mobility ratios and the board centrality heatmap:
+```bash
+python3 discover_values.py
+```
 
 ### 4. AlphaZero MCTS Agent (Milestone 2 Smoke Test)
 Run the PUCT-guided Monte Carlo Tree Search agent:
@@ -359,8 +394,8 @@ This reduces check detection from hundreds of loop iterations down to ~25 fast m
 
 ### E. Roadmap to Milestone 2 & AlphaZero
 
-* **Milestone 1 (Complete)**: Flawless rule engine, check detection, terminal conditions, unit tests, and browser UI.
-* **Milestone 2 (Next)**: 
+* **Milestone 1**: Flawless rule engine, check detection, terminal conditions, unit tests, and browser UI.
+* **Milestone 2 **: 
   * State tensor converter (`chaturanga/tensor.py`): $8 \times 8 \to (13, 8, 8)$ tensor.
   * Lightweight PyTorch ResNet (`chaturanga/model.py`): 4–6 residual blocks with dual heads (Policy: 4,096 logits, Value: scalar $\in [-1, 1]$).
   * PUCT Monte Carlo Tree Search (`chaturanga/mcts.py`): Guided tree expansion using network priors ($P(s, a)$) and node evaluations ($v$) without slow random rollouts.

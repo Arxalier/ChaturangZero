@@ -59,3 +59,58 @@ Diagnosis:
   3. Premature 120-Ply Cutoff: In ancient Chaturanga, 120 plies is only 60 turns per side.
      Cutting games at 120 plies forcibly prevented endgames from converting.
 ===========================================================================
+
+Then,
+python3 test_vs_random.py 40 10
+======================================================================
+CHATURANGZERO BENCHMARK: Neural MCTS vs Random Bot (10 Games)
+Model: checkpoints/gen_final.pt | MCTS Sims: 40 | Max Plies (Capacity): 300
+======================================================================
+✓ Successfully loaded weights from checkpoints/gen_final.pt on cpu
+
+Game 01/10 | AI (White) vs Random (Black) | 181 plies | AI WIN (terminal) [Pcs: W=12, B=1]
+Game 02/10 | AI (Black) vs Random (White) |  96 plies | AI WIN (terminal) [Pcs: W=1, B=11]
+Game 03/10 | AI (White) vs Random (Black) | 281 plies | AI WIN (terminal) [Pcs: W=10, B=1]
+Game 04/10 | AI (Black) vs Random (White) | 144 plies | AI WIN (terminal) [Pcs: W=1, B=12]
+Game 05/10 | AI (White) vs Random (Black) | 249 plies | AI WIN (terminal) [Pcs: W=10, B=1]
+Game 06/10 | AI (Black) vs Random (White) | 300 plies | DRAW (max_turns) [Pcs: W=2, B=11]
+Game 07/10 | AI (White) vs Random (Black) | 209 plies | AI WIN (terminal) [Pcs: W=11, B=1]
+Game 08/10 | AI (Black) vs Random (White) | 108 plies | AI WIN (terminal) [Pcs: W=1, B=9]
+Game 09/10 | AI (White) vs Random (Black) | 237 plies | AI WIN (terminal) [Pcs: W=7, B=1]
+Game 10/10 | AI (Black) vs Random (White) | 170 plies | AI WIN (terminal) [Pcs: W=1, B=11]
+
+======================================================================
+FINAL BENCHMARK RESULTS
+======================================================================
+ChaturangZero (AI) Wins : 9 / 10 (90.0%)
+Random Bot Wins         : 0 / 10 (0.0%)
+Draws                   : 1 / 10 (10.0%)
+======================================================================
+===========================================================================
+ABLATION STUDY: MCTS LOOKAHEAD DEPTH & TRAINING REGIME COMPARISON
+===========================================================================
+FORMER BASELINE (Pre-Bootstrap Model @ 20-40 Sims):
+  * Training Regime : Pure Self-Play (Cold-Start Draw Collapse)
+  * Search Depth    : 20-40 MCTS simulations
+  * 10-Game Result  : 0 AI Wins (0.0%), 1 Random Win (10.0%), 9 Draws (90.0%)
+  * Root Cause      : Blind Value Head (V ≈ +0.13 constant), MCTS Q ≈ 0
+---------------------------------------------------------------------------
+CURRENT EXPERIMENT (Bootstrapped Fine-Tuned Model @ 200 Sims):
+  * Training Regime : AlphaGo-Style Teacher Transfer Learning (12 Epochs)
+  * Search Depth    : 200 MCTS simulations (deep tactical calculation)
+  * 10-Game Result  : 9 AI Wins (90%), 0 Random Wins (0%), 1 Draws (10%)
+  * Total Test Time : 953.5 seconds
+---------------------------------------------------------------------------
+Game   | AI Color   | Plies    | Result       | Termination        | Pieces      
+---------------------------------------------------------------------------
+1      | White      | 250      | DRAW         | max_turns          | W=12, B=2   
+2      | Black      | 114      | AI WIN       | terminal           | W=1, B=12   
+3      | White      | 125      | AI WIN       | terminal           | W=8, B=1    
+4      | Black      | 148      | AI WIN       | terminal           | W=1, B=9    
+5      | White      | 209      | AI WIN       | terminal           | W=5, B=1    
+6      | Black      | 108      | AI WIN       | terminal           | W=1, B=14   
+7      | White      | 141      | AI WIN       | terminal           | W=11, B=1   
+8      | Black      | 114      | AI WIN       | terminal           | W=1, B=11   
+9      | White      | 183      | AI WIN       | terminal           | W=13, B=1   
+10     | Black      | 100      | AI WIN       | terminal           | W=1, B=13   
+===========================================================================
