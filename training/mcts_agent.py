@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Set
 import numpy as np
 
 try:
@@ -261,22 +261,34 @@ class NeuralMCTS:
 
 
 class ChaturangPlayer(BasePlayer):
-    """Universal player wrapper implementing BasePlayer with configurable Elo degradation."""
+    """Universal player wrapper implementing BasePlayer with configurable Elo degradation and anti-repetition guard."""
     def __init__(
         self,
         model=None,
         num_sims: int = 40,
         temperature: float = 0.1,
         top_k: Optional[int] = None,
-        blunder_rate: float = 0.0
+        blunder_rate: float = 0.0,
+        avoid_repetition: bool = True
     ):
         self.num_sims = num_sims
         self.temperature = temperature
         self.top_k = top_k
         self.blunder_rate = blunder_rate
+        self.avoid_repetition = avoid_repetition
+        self.visited_positions = set()
         self.mcts = NeuralMCTS(model=model, num_simulations=num_sims)
 
-    def get_move(self, board: np.ndarray, player: int) -> Move:
+    def reset(self):
+        """Clears visited positions for a fresh game."""
+        self.visited_positions.clear()
+
+    def get_move(
+        self,
+        board: np.ndarray,
+        player: int,
+        past_positions: Optional[Set[bytes]] = None
+    ) -> Move:
         legal_moves = get_all_legal_moves(board, player)
         if not legal_moves:
             raise ValueError("No legal moves available.")
@@ -284,6 +296,29 @@ class ChaturangPlayer(BasePlayer):
         # Blunder injection (optional random move)
         if self.blunder_rate > 0.0 and random.random() < self.blunder_rate:
             return random.choice(legal_moves)
+
+        pos_bytes = board.tobytes()
+        self.visited_positions.add(pos_bytes)
+
+        effective_past = set(self.visited_positions)
+        if past_positions:
+            effective_past.update(past_positions)
+
+        def _filter_repetition(candidate_moves, candidate_probs):
+            if not self.avoid_repetition or len(candidate_moves) <= 1:
+                return candidate_moves, candidate_probs
+            non_repeating_moves = []
+            non_repeating_probs = []
+            for m, p in zip(candidate_moves, candidate_probs):
+                next_b = make_move(board, m[0], m[1])
+                if next_b.tobytes() not in effective_past:
+                    non_repeating_moves.append(m)
+                    non_repeating_probs.append(p)
+            if non_repeating_moves:
+                sum_p = sum(non_repeating_probs)
+                norm_p = [p / sum_p for p in non_repeating_probs] if sum_p > 0 else [1.0 / len(non_repeating_moves)] * len(non_repeating_moves)
+                return non_repeating_moves, norm_p
+            return candidate_moves, candidate_probs
 
         # 1. Novice Tier: num_sims == 0 (sample directly from raw policy head with zero lookahead)
         if self.num_sims == 0:
@@ -301,14 +336,17 @@ class ChaturangPlayer(BasePlayer):
                 probs = probs / (sum_p if sum_p > 0 else 1.0)
 
             if self.temperature < 0.05:
-                return moves[int(np.argmax(probs))]
+                filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
+                return filt_moves[int(np.argmax(filt_probs))]
 
             # Safeguard: normalize by max probability before temperature scaling to prevent underflow
             probs = probs / np.max(probs)
             probs = probs ** (1.0 / max(self.temperature, 1e-4))
             sum_p = probs.sum()
             probs = probs / (sum_p if sum_p > 0 else 1.0)
-            return random.choices(moves, weights=probs.tolist(), k=1)[0]
+
+            filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
+            return random.choices(filt_moves, weights=filt_probs, k=1)[0]
 
         # 2. Normal MCTS Lookahead Search (Intermediate / Master Tiers)
         root = self.mcts.search(board, player, add_dirichlet=False)
@@ -329,7 +367,8 @@ class ChaturangPlayer(BasePlayer):
             sum_p = probs.sum()
             probs = probs / (sum_p if sum_p > 0 else 1.0)
 
-        return random.choices(moves, weights=probs.tolist(), k=1)[0]
+        filt_moves, filt_probs = _filter_repetition(moves, probs.tolist())
+        return random.choices(filt_moves, weights=filt_probs, k=1)[0]
 
 
 ChaturangZeroPlayer = ChaturangPlayer
