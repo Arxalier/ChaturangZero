@@ -524,3 +524,55 @@ kbd {
   .layout { grid-template-columns:1fr; }
   .piece { font-size:min(9vw,44px); }
 }
+
+/* ───────────────────────────── opponent selector ───────────────────────────── */
+
+.bot-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.bot-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.bot-select {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--panel);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.bot-select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.bot-meta {
+  font-size: 11px;
+  color: var(--txt-3);
+  margin-right: auto;
+}
+.btn.ai-btn {
+  background: #2e7d32;
+  color: #fff;
+  border-color: #1b5e20;
+}
+.btn.ai-btn:hover {
+  background: #388e3c;
+  border-color: #2e7d32;
+}
+.btn.ai-btn kbd {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e8f5e9;
+}

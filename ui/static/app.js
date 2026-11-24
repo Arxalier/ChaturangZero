@@ -17,6 +17,7 @@ const S = {
   attackSide: -1,     // which side's Raja is being probed
   auto: null,         // setInterval handle
   hover: null,        // {from:[r,c], to:[r,c]} for the arrow preview
+  aiBusy: false,      // prevents overlapping bot requests while thinking
 };
 
 const $ = (id) => document.getElementById(id);
@@ -433,6 +434,30 @@ function markActiveScenario() {
   });
 }
 
+function selectedBotId() {
+  const sel = $('botSelect');
+  return sel ? sel.value : 'alphazero';
+}
+
+function updateBotSubtitle() {
+  const id = selectedBotId();
+  const bots = (S.boot && S.boot.bots) || [];
+  const spec = bots.find((b) => b.id === id);
+  const el = $('botSubtitle');
+  if (el) el.textContent = spec ? spec.subtitle : '';
+}
+
+function drawBots() {
+  const sel = $('botSelect');
+  const bots = (S.boot && S.boot.bots) || [];
+  if (!sel || !bots.length) return;
+  sel.innerHTML = bots
+    .map((b) => `<option value="${b.id}">${b.name} (${b.family === 'neural' ? 'AlphaZero' : 'Scholar'})</option>`)
+    .join('');
+  sel.value = 'chanakya';
+  updateBotSubtitle();
+}
+
 /* ───────────────────────────────── actions ───────────────────────────────── */
 
 function applyState(state) {
@@ -469,8 +494,8 @@ async function playMove(from, to) {
   if (res.result.promoted) bits.push('Padati promoted to Mantri (board.make_move)');
   if (bits.length) toast(bits.join(' · '));
 
-  if ($('tgVsAI') && $('tgVsAI').checked && !res.result.done && res.state.active_player === -1) {
-    setTimeout(aiMove, 250);
+  if ($('tgVsAI') && $('tgVsAI').checked && !res.result.done && res.state.current_player === -1) {
+    setTimeout(aiMove, 220);
   }
 }
 
@@ -532,16 +557,40 @@ async function randomMove() {
 }
 
 async function aiMove() {
+  if (S.aiBusy || !S.state || S.state.outcome.over) return false;
+  const botId = selectedBotId();
   const btn = $('btnAI');
-  if (btn) btn.disabled = true;
-  const res = await apiPost('/api/ai_move');
-  if (btn) btn.disabled = false;
-  if (!res.result.ok) { toast(res.result.error || 'No AI move available', true); return false; }
-  S.selected = null; S.inspect = null;
-  applyState(res.state);
-  drawInspector();
-  await refreshAttacks();
-  return !res.result.done;
+  S.aiBusy = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Thinking…';
+  }
+  try {
+    const res = await apiPost('/api/ai_move', { bot: botId });
+    if (!res.result.ok) {
+      toast(res.result.error || 'No bot move available', true);
+      return false;
+    }
+    S.selected = null;
+    S.inspect = null;
+    S.hover = null;
+    applyState(res.state);
+    drawInspector();
+    await refreshAttacks();
+    const who = res.result.bot_name || botId;
+    const ms = res.result.elapsed_ms != null ? ` (${res.result.elapsed_ms} ms)` : '';
+    toast(`${who} moved${ms}`);
+    return !res.result.done;
+  } catch (err) {
+    toast(`Bot move failed: ${err.message}`, true);
+    return false;
+  } finally {
+    S.aiBusy = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Bot Move <kbd>Z</kbd>';
+    }
+  }
 }
 
 function stopAuto() {
@@ -583,7 +632,7 @@ async function runPerft() {
 function wire() {
   $('board').addEventListener('click', (ev) => {
     const sq = ev.target.closest('.sq');
-    if (!sq || S.state.outcome.over) return;
+    if (!sq || S.state.outcome.over || S.aiBusy) return;
     selectSquare(Number(sq.dataset.r), Number(sq.dataset.c));
   });
 
@@ -593,6 +642,14 @@ function wire() {
   $('bannerUndo').onclick = undo;
   $('btnRandom').onclick = randomMove;
   if ($('btnAI')) $('btnAI').onclick = aiMove;
+  if ($('botSelect')) $('botSelect').onchange = updateBotSubtitle;
+  if ($('tgVsAI')) {
+    $('tgVsAI').onchange = () => {
+      if ($('tgVsAI').checked && S.state && !S.state.outcome.over && S.state.current_player === -1) {
+        aiMove();
+      }
+    };
+  }
   $('btnAuto').onclick = toggleAuto;
   $('btnPerft').onclick = runPerft;
 
@@ -627,6 +684,7 @@ function wire() {
 
   document.addEventListener('keydown', (ev) => {
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.target && /^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)) return;
     const k = ev.key.toLowerCase();
     if (k === 'escape') { S.selected = null; S.inspect = null; $('helpModal').hidden = true; drawBoard(); drawInspector(); }
     else if (k === 'n') newGame();
@@ -656,6 +714,7 @@ async function boot() {
   drawRules();
   drawLegendTable();
   drawScenarios();
+  drawBots();
   wire();
   applyState(S.boot.state);
   await applyDeepLink();

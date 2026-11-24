@@ -467,3 +467,116 @@ def codex() -> List[Dict[str, Any]]:
             "surrounded_count": len(leaps),
         })
     return out
+
+# ---------------------------------------------------------------------------
+# Bot Registry & Opponent Dispatch (Person 3 — Scholar Bots + AlphaZero)
+# ---------------------------------------------------------------------------
+
+BOT_SPECS: List[Dict[str, str]] = [
+    {
+        "id": "chanakya",
+        "name": "Chanakya",
+        "subtitle": "Aggressive Tactician · Depth-2 Alpha-Beta",
+        "family": "scholar",
+    },
+    {
+        "id": "aryabhata",
+        "name": "Aryabhata",
+        "subtitle": "Positional Sage · Piece-Square Tables",
+        "family": "scholar",
+    },
+    {
+        "id": "panini",
+        "name": "Panini",
+        "subtitle": "Defensive Strategist · King & Piece Safety",
+        "family": "scholar",
+    },
+    {
+        "id": "novice",
+        "name": "Novice",
+        "subtitle": "Baseline · 80% Random / 20% Capture",
+        "family": "scholar",
+    },
+    {
+        "id": "alphazero",
+        "name": "ChaturangZero",
+        "subtitle": "AlphaZero Neural MCTS (40 sims)",
+        "family": "neural",
+    },
+]
+
+_BOT_BY_ID: Dict[str, Dict[str, str]] = {spec["id"]: spec for spec in BOT_SPECS}
+
+
+def bot_catalogue() -> List[Dict[str, str]]:
+    """Returns metadata for all selectable UI opponent bots."""
+    return list(BOT_SPECS)
+
+
+def create_bot(bot_id: str, model_loader=None):
+    """Instantiates a BasePlayer matching `bot_id`."""
+    from bots import NoviceBot, ChanakyaBot, AryabhataBot, PaniniBot
+
+    if bot_id == "chanakya":
+        return ChanakyaBot()
+    if bot_id == "aryabhata":
+        return AryabhataBot()
+    if bot_id == "panini":
+        return PaniniBot()
+    if bot_id == "novice":
+        return NoviceBot()
+    if bot_id in ("alphazero", "chaturangzero"):
+        from training.mcts_agent import ChaturangPlayer
+        model = model_loader() if callable(model_loader) else None
+        return ChaturangPlayer(model=model, num_sims=40, temperature=0.1)
+
+    raise ValueError(f"Unknown bot id: {bot_id!r}")
+
+
+def play_bot_move(
+    session: Session,
+    bot_id: str = "alphazero",
+    model_loader=None,
+) -> Dict[str, Any]:
+    """
+    Queries the selected BasePlayer for a move via get_move() and applies it
+    to `session` through the rules engine.
+    """
+    import time
+
+    if bot_id not in _BOT_BY_ID:
+        return {"ok": False, "error": f"Unknown opponent '{bot_id}'"}
+
+    board = session.env.board
+    player = session.env.current_player
+
+    if get_game_outcome(board, player) is not None:
+        return {"ok": False, "error": "Game is already over"}
+
+    legal = get_all_legal_moves(board, player)
+    if not legal:
+        return {"ok": False, "error": "No legal moves available"}
+
+    t0 = time.perf_counter()
+    bot = create_bot(bot_id, model_loader=model_loader)
+    bot_cls = type(bot).__name__
+
+    if bot_id == "alphazero":
+        pos_counts: Dict[bytes, int] = {}
+        for b, p in session.undo_stack:
+            k = b.tobytes() + bytes([1 if p == WHITE else 0])
+            pos_counts[k] = pos_counts.get(k, 0) + 1
+        move = bot.get_move(board.copy(), player, past_position_counts=pos_counts)
+    else:
+        move = bot.get_move(board.copy(), player)
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    session._log(f"{bot_cls}.get_move")
+
+    start, end = move
+    result = session.play(start, end)
+    result["move"] = [list(start), list(end)]
+    result["bot"] = bot_id
+    result["bot_name"] = _BOT_BY_ID[bot_id]["name"]
+    result["elapsed_ms"] = round(elapsed_ms, 1)
+    return result

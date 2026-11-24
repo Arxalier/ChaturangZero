@@ -39,7 +39,9 @@ except ModuleNotFoundError:  # pragma: no cover - startup guard
     )
 
 from chaturanga import WHITE, BLACK, PIECE_SYMBOLS, PIECE_NAMES  # noqa: E402
-from ui.engine_api import Session, codex, SANSKRIT, ENGLISH  # noqa: E402
+from ui.engine_api import (  # noqa: E402
+    Session, codex, bot_catalogue, play_bot_move, SANSKRIT, ENGLISH,
+)
 from ui import scenarios as scen  # noqa: E402
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -105,6 +107,12 @@ COMPONENTS = [
      "summary": "Dual-headed ResNet architecture, PUCT MCTS, self-play training loop.",
      "items": ["neural/model.py (ChaturangaNet)", "neural/encoder.py (13x8x8, 4096-dim)",
                "training/mcts_agent.py (PUCT)", "training/self_play.py", "training/train.py"]},
+    {"module": "bots/scholar_bots.py", "status": "done",
+     "summary": "Themed heuristic opponents implementing the universal BasePlayer interface.",
+     "items": ["ChanakyaBot (Aggressive Tactician, Depth-2 Alpha-Beta)",
+               "AryabhataBot (Positional Sage, Piece-Square Tables)",
+               "PaniniBot (Defensive Strategist, King & Piece Safety)",
+               "NoviceBot (80% Random / 20% Greedy Capture)"]},
 ]
 
 RULES_CARD = {
@@ -201,6 +209,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({
                     "codex": codex(),
                     "scenarios": scen.catalogue(),
+                    "bots": bot_catalogue(),
                     "components": COMPONENTS,
                     "rules": RULES_CARD,
                     "legend": piece_legend(),
@@ -256,19 +265,9 @@ class Handler(BaseHTTPRequestHandler):
                     result["move"] = [list(start), list(end)]
                     self._send_json({"result": result, "state": SESSION.state()})
 
-                elif route in ("/api/ai_move", "/api/chaturang_move"):
-                    from training.mcts_agent import ChaturangPlayer
-                    model = get_ai_model()
-                    sims = int(body.get("sims", AI_NUM_SIMS)) if isinstance(body, dict) else AI_NUM_SIMS
-                    player = ChaturangPlayer(model=model, num_sims=sims, temperature=0.0)
-                    pos_counts = {}
-                    for b, p in SESSION.undo_stack:
-                        k = b.tobytes() + bytes([1 if p == 1 else 0])
-                        pos_counts[k] = pos_counts.get(k, 0) + 1
-                    move = player.get_move(SESSION.env.board, SESSION.env.current_player, past_position_counts=pos_counts)
-                    start, end = move
-                    result = SESSION.play(start, end)
-                    result["move"] = [list(start), list(end)]
+                elif route in ("/api/ai_move", "/api/chaturang_move", "/api/bot_move"):
+                    bot_id = body.get("bot", "alphazero")
+                    result = play_bot_move(SESSION, bot_id=bot_id, model_loader=get_ai_model)
                     self._send_json({"result": result, "state": SESSION.state()})
 
                 elif route == "/api/perft":
