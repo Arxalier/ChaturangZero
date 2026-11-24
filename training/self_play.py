@@ -35,10 +35,19 @@ class ReplayBuffer:
 
 class SelfPlayAgent:
     """Runs self-play games to generate training data."""
-    def __init__(self, model, num_simulations: int = 40, temp_threshold: int = 15, max_turns: int = 120):
+    def __init__(
+        self,
+        model,
+        num_simulations: int = 25,
+        temp_threshold: int = 35,
+        max_turns: int = 100,
+        rep_penalty: float = -0.15,
+    ):
         self.mcts = NeuralMCTS(model=model, num_simulations=num_simulations)
-        self.temp_threshold = temp_threshold  # High temp for first N moves, low after
+        self.temp_threshold = temp_threshold  # High temp (1.0) for first N moves, 0.25 after
         self.max_turns = max_turns            # Prevents infinite repetition cycles
+        self.rep_penalty = rep_penalty        # Small penalty to break 3-fold repetition draw traps
+        self.last_result: str = "max_turns"
 
     def play_game(self) -> List[TrainingSample]:
         # Ensure model is in eval mode during self-play
@@ -49,6 +58,7 @@ class SelfPlayAgent:
         game_history = []  # Stores (board, current_player, pi_vector_4096)
         position_counts: Dict[bytes, int] = {}
         turn_count = 0
+        ended_by_rep = False
 
         while turn_count < self.max_turns:
             board = env.board.copy()
@@ -58,14 +68,15 @@ class SelfPlayAgent:
             pos_key = board.tobytes() + bytes([1 if player == 1 else 0])
             position_counts[pos_key] = position_counts.get(pos_key, 0) + 1
             if position_counts[pos_key] >= 3:
+                ended_by_rep = True
                 break
 
             outcome = get_game_outcome(board, player)
             if outcome is not None:
                 break
 
-            # High temperature (1.0) early on for variety, sharp temperature (0.1) later
-            tau = 1.0 if turn_count < self.temp_threshold else 0.1
+            # Tau=1.0 for first 35 turns, Tau=0.25 after (avoids premature deterministic cycling)
+            tau = 1.0 if turn_count < self.temp_threshold else 0.25
 
             # Run MCTS with Dirichlet exploration noise
             root = self.mcts.search(board, player, add_dirichlet=True)
@@ -93,16 +104,19 @@ class SelfPlayAgent:
         # Determine final winner
         final_outcome = get_game_outcome(env.board, env.current_player)
         if final_outcome is None:
-            # Reached max turns or 3-fold repetition: treat as draw
             winner = 0
+            self.last_result = "repetition" if ended_by_rep else "max_turns"
         else:
-            # outcome is from the perspective of current_player
             winner = env.current_player if final_outcome == 1 else -env.current_player
+            self.last_result = "white" if winner == 1 else "black"
 
-        # Build final training samples with target z (+1 for win, -1 for loss, 0 for draw)
+        # Build final training samples with target z (+1 for win, -1 for loss, -0.15 for repetition)
         samples = []
         for board_snap, step_player, pi_vec in game_history:
-            z = 1.0 if step_player == winner else (-1.0 if winner != 0 else 0.0)
+            if winner != 0:
+                z = 1.0 if step_player == winner else -1.0
+            else:
+                z = self.rep_penalty if ended_by_rep else 0.0
             samples.append((board_snap, step_player, pi_vec, z))
 
         return samples

@@ -98,12 +98,12 @@ def train_step(model, optimizer, criterion, batch, device, augment: bool = True)
 
 
 def run_training(
-    num_iterations: int = 20,
+    num_iterations: int = 30,
     games_per_iter: int = 15,
-    sims_per_move: int = 20,
-    max_turns: int = 90,
-    batch_size: int = 32,
-    train_steps_per_iter: int = 20,
+    sims_per_move: int = 25,
+    max_turns: int = 100,
+    batch_size: int = 64,
+    train_steps_per_iter: int = 25,
     learning_rate: float = 1e-3,
     save_dir: str = "checkpoints",
     resume_from: str = None
@@ -150,11 +150,16 @@ def run_training(
         model.eval()
         agent = SelfPlayAgent(model=model, num_simulations=sims_per_move, max_turns=max_turns)
         turns_this_iter = []
+        outcomes = {"white": 0, "black": 0, "repetition": 0, "max_turns": 0}
         for g in range(games_per_iter):
             game_samples = agent.play_game()
             buffer.push_game(game_samples)
+            res = getattr(agent, "last_result", "max_turns")
+            outcomes[res] = outcomes.get(res, 0) + 1
             turns_this_iter.append(len(game_samples))
-            print(f"Iter {iteration} | Game {g + 1}/{games_per_iter} completed ({len(game_samples)} turns)")
+            print(f"Iter {iteration} | Game {g + 1}/{games_per_iter} completed ({len(game_samples)} turns, {res})")
+
+        print(f"Iter {iteration} Outcomes: W={outcomes.get('white', 0)}, B={outcomes.get('black', 0)}, Rep={outcomes.get('repetition', 0)}, Cap={outcomes.get('max_turns', 0)}")
 
         avg_game_len = float(np.mean(turns_this_iter)) if turns_this_iter else 0.0
 
@@ -186,6 +191,7 @@ def run_training(
             "pol_loss": mean_p,
             "avg_game_length": avg_game_len,
             "buffer_size": len(buffer),
+            "outcomes": outcomes,
         }
         history_log.append(iter_record)
 
@@ -213,12 +219,12 @@ def run_training(
 
 def main():
     parser = argparse.ArgumentParser(description="Train ChaturangZero via Self-Play Reinforcement Learning")
-    parser.add_argument("--iterations", type=int, default=20, help="Total training iterations (default: 20)")
+    parser.add_argument("--iterations", type=int, default=30, help="Total training iterations (default: 30)")
     parser.add_argument("--games-per-iter", type=int, default=15, help="Self-play games per iteration (default: 15)")
-    parser.add_argument("--sims", type=int, default=20, help="MCTS simulations per move (default: 20)")
-    parser.add_argument("--max-turns", type=int, default=90, help="Max turns per game before draw (default: 90)")
-    parser.add_argument("--batch-size", type=int, default=32, help="Mini-batch size (default: 32)")
-    parser.add_argument("--train-steps", type=int, default=20, help="Gradient steps per iteration (default: 20)")
+    parser.add_argument("--sims", type=int, default=25, help="MCTS simulations per move (default: 25)")
+    parser.add_argument("--max-turns", type=int, default=100, help="Max turns per game before draw (default: 100)")
+    parser.add_argument("--batch-size", type=int, default=64, help="Mini-batch size (default: 64)")
+    parser.add_argument("--train-steps", type=int, default=25, help="Gradient steps per iteration (default: 25)")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)")
     parser.add_argument("--save-dir", type=str, default="checkpoints", help="Directory to save checkpoints and logs")
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint_latest.pt to resume from")
