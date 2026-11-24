@@ -1,0 +1,496 @@
+[
+  {
+    "iteration": 1,
+    "total_loss": 2.8773937368392946,
+    "val_loss": 0.13363887503743171,
+    "pol_loss": 2.342838249206543,
+    "avg_game_length": 113.26666666666667,
+    "buffer_size": 619,
+    "outcomes": {
+      "white": 2,
+      "black": 1,
+      "repetition": 0,
+      "max_turns": 12
+    },
+    "probe": {
+      "start": -0.02004850283265114,
+      "up_chariot": -0.011211521923542023,
+      "down_chariot": -0.0027861895505338907
+    }
+  },
+  {
+    "iteration": 2,
+    "total_loss": 2.4655685472488402,
+    "val_loss": 0.08143555000424385,
+    "pol_loss": 2.1398263692855837,
+    "avg_game_length": 93.66666666666667,
+    "buffer_size": 1208,
+    "outcomes": {
+      "white": 3,
+      "black": 2,
+      "repetition": 2,
+      "max_turns": 8
+    },
+    "probe": null
+  },
+  {
+    "iteration": 3,
+    "total_loss": 2.1458373832702637,
+    "val_loss": 0.034230413287878035,
+    "pol_loss": 2.0089157247543334,
+    "avg_game_length": 104.86666666666666,
+    "buffer_size": 1505,
+    "outcomes": {
+      "white": 0,
+      "black": 0,
+      "repetition": 7,
+      "max_turns": 8
+    },
+    "probe": {
+      "start": 0.5381879806518555,
+      "up_chariot": 0.5166659355163574,
+      "down_chariot": 0.5076093077659607
+    }
+  },
+  {
+    "iteration": 4,
+    "total_loss": 2.049505658149719,
+    "val_loss": 0.06765238001942635,
+    "pol_loss": 1.7788961410522461,
+    "avg_game_length": 95.26666666666667,
+    "buffer_size": 2145,
+    "outcomes": {
+      "white": 1,
+      "black": 3,
+      "repetition": 5,
+      "max_turns": 6
+    },
+    "probe": null
+  },
+  {
+    "iteration": 5,
+    "total_loss": 1.8689528465270997,
+    "val_loss": 0.046507317125797275,
+    "pol_loss": 1.682923583984375,
+    "avg_game_length": 67.53333333333333,
+    "buffer_size": 2364,
+    "outcomes": {
+      "white": 2,
+      "black": 1,
+      "repetition": 8,
+      "max_turns": 4
+    },
+    "probe": null
+  },
+  {
+    "iteration": 6,
+    "total_loss": 1.7986374521255493,
+    "val_loss": 0.03491778876632452,
+    "pol_loss": 1.6589662981033326,
+    "avg_game_length": 83.66666666666667,
+    "buffer_size": 2701,
+    "outcomes": {
+      "white": 0,
+      "black": 2,
+      "repetition": 10,
+      "max_turns": 3
+    },
+    "probe": {
+      "start": 0.11542460322380066,
+      "up_chariot": 0.0988449826836586,
+      "down_chariot": 0.12141066044569016
+    }
+  },
+  {
+    "iteration": 7,
+    "total_loss": 1.6780839824676514,
+    "val_loss": 0.02696008585393429,
+    "pol_loss": 1.5702436399459838,
+    "avg_game_length": 78.0,
+    "buffer_size": 3020,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 10,
+      "max_turns": 4
+    },
+    "probe": null
+  },
+  {
+    "iteration": 8,
+    "total_loss": 1.6907267713546752,
+    "val_loss": 0.046894815787672996,
+    "pol_loss": 1.5031475162506103,
+    "avg_game_length": 59.8,
+    "buffer_size": 3327,
+    "outcomes": {
+      "white": 2,
+      "black": 2,
+      "repetition": 9,
+      "max_turns": 2
+    },
+    "probe": null
+  },
+  {
+    "iteration": 9,
+    "total_loss": 1.5968231296539306,
+    "val_loss": 0.037458988986909386,
+    "pol_loss": 1.4469871616363525,
+    "avg_game_length": 76.93333333333334,
+    "buffer_size": 3633,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 11,
+      "max_turns": 3
+    },
+    "probe": {
+      "start": -0.020361581817269325,
+      "up_chariot": -0.019368907436728477,
+      "down_chariot": -0.02836657501757145
+    }
+  },
+  {
+    "iteration": 10,
+    "total_loss": 1.5586754512786865,
+    "val_loss": 0.034122246205806735,
+    "pol_loss": 1.4221864604949952,
+    "avg_game_length": 54.53333333333333,
+    "buffer_size": 3845,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 13,
+      "max_turns": 1
+    },
+    "probe": null
+  },
+  {
+    "iteration": 11,
+    "total_loss": 1.6303536891937256,
+    "val_loss": 0.05677380889654159,
+    "pol_loss": 1.4032584476470946,
+    "avg_game_length": 69.06666666666666,
+    "buffer_size": 4442,
+    "outcomes": {
+      "white": 3,
+      "black": 3,
+      "repetition": 7,
+      "max_turns": 2
+    },
+    "probe": null
+  },
+  {
+    "iteration": 12,
+    "total_loss": 1.6035127210617066,
+    "val_loss": 0.04601013120263815,
+    "pol_loss": 1.4194722032546998,
+    "avg_game_length": 67.13333333333334,
+    "buffer_size": 4740,
+    "outcomes": {
+      "white": 0,
+      "black": 2,
+      "repetition": 10,
+      "max_turns": 3
+    },
+    "probe": {
+      "start": 0.17725105583667755,
+      "up_chariot": 0.19007964432239532,
+      "down_chariot": 0.1627187281847
+    }
+  },
+  {
+    "iteration": 13,
+    "total_loss": 1.52182963848114,
+    "val_loss": 0.033311341516673566,
+    "pol_loss": 1.3885842657089233,
+    "avg_game_length": 55.666666666666664,
+    "buffer_size": 4942,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 12,
+      "max_turns": 2
+    },
+    "probe": null
+  },
+  {
+    "iteration": 14,
+    "total_loss": 1.4936197376251221,
+    "val_loss": 0.041349058002233506,
+    "pol_loss": 1.3282235097885131,
+    "avg_game_length": 55.733333333333334,
+    "buffer_size": 5194,
+    "outcomes": {
+      "white": 1,
+      "black": 1,
+      "repetition": 12,
+      "max_turns": 1
+    },
+    "probe": null
+  },
+  {
+    "iteration": 15,
+    "total_loss": 1.4226609516143798,
+    "val_loss": 0.03219296287745237,
+    "pol_loss": 1.2938891077041625,
+    "avg_game_length": 68.13333333333334,
+    "buffer_size": 5378,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 11,
+      "max_turns": 3
+    },
+    "probe": {
+      "start": 0.30952125787734985,
+      "up_chariot": 0.3100428879261017,
+      "down_chariot": 0.2917483448982239
+    }
+  },
+  {
+    "iteration": 16,
+    "total_loss": 1.442245397567749,
+    "val_loss": 0.029531951136887072,
+    "pol_loss": 1.3241175985336304,
+    "avg_game_length": 79.33333333333333,
+    "buffer_size": 5729,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 8,
+      "max_turns": 6
+    },
+    "probe": null
+  },
+  {
+    "iteration": 17,
+    "total_loss": 1.4313231992721558,
+    "val_loss": 0.0240360127389431,
+    "pol_loss": 1.3351791524887084,
+    "avg_game_length": 63.93333333333333,
+    "buffer_size": 6108,
+    "outcomes": {
+      "white": 0,
+      "black": 2,
+      "repetition": 12,
+      "max_turns": 1
+    },
+    "probe": null
+  },
+  {
+    "iteration": 18,
+    "total_loss": 1.3391859865188598,
+    "val_loss": 0.024897670969367028,
+    "pol_loss": 1.2395952939987183,
+    "avg_game_length": 66.2,
+    "buffer_size": 6331,
+    "outcomes": {
+      "white": 0,
+      "black": 0,
+      "repetition": 15,
+      "max_turns": 0
+    },
+    "probe": {
+      "start": 0.10613220930099487,
+      "up_chariot": 0.10695397853851318,
+      "down_chariot": 0.11295875906944275
+    }
+  },
+  {
+    "iteration": 19,
+    "total_loss": 1.4443584156036378,
+    "val_loss": 0.04023727212101221,
+    "pol_loss": 1.2834093284606933,
+    "avg_game_length": 49.93333333333333,
+    "buffer_size": 6644,
+    "outcomes": {
+      "white": 2,
+      "black": 1,
+      "repetition": 12,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 20,
+    "total_loss": 1.3953837060928345,
+    "val_loss": 0.03566707149147987,
+    "pol_loss": 1.2527154231071471,
+    "avg_game_length": 68.33333333333333,
+    "buffer_size": 6885,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 12,
+      "max_turns": 2
+    },
+    "probe": null
+  },
+  {
+    "iteration": 21,
+    "total_loss": 1.3404104614257812,
+    "val_loss": 0.031737184189260005,
+    "pol_loss": 1.213461718559265,
+    "avg_game_length": 52.53333333333333,
+    "buffer_size": 7075,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 13,
+      "max_turns": 1
+    },
+    "probe": {
+      "start": 0.07627198845148087,
+      "up_chariot": 0.06333111226558685,
+      "down_chariot": 0.04714630916714668
+    }
+  },
+  {
+    "iteration": 22,
+    "total_loss": 1.3368145632743835,
+    "val_loss": 0.03516989400610328,
+    "pol_loss": 1.1961349868774414,
+    "avg_game_length": 53.46666666666667,
+    "buffer_size": 7329,
+    "outcomes": {
+      "white": 2,
+      "black": 0,
+      "repetition": 13,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 23,
+    "total_loss": 1.406355004310608,
+    "val_loss": 0.046131055541336535,
+    "pol_loss": 1.2218307948112488,
+    "avg_game_length": 59.0,
+    "buffer_size": 7559,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 14,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 24,
+    "total_loss": 1.3910001230239868,
+    "val_loss": 0.04017772737890482,
+    "pol_loss": 1.2302891969680787,
+    "avg_game_length": 67.26666666666667,
+    "buffer_size": 7880,
+    "outcomes": {
+      "white": 2,
+      "black": 0,
+      "repetition": 10,
+      "max_turns": 3
+    },
+    "probe": {
+      "start": 0.07127707451581955,
+      "up_chariot": 0.06135404855012894,
+      "down_chariot": 0.06583438813686371
+    }
+  },
+  {
+    "iteration": 25,
+    "total_loss": 1.356183443069458,
+    "val_loss": 0.02643894238397479,
+    "pol_loss": 1.2504276657104492,
+    "avg_game_length": 72.0,
+    "buffer_size": 8107,
+    "outcomes": {
+      "white": 0,
+      "black": 0,
+      "repetition": 15,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 26,
+    "total_loss": 1.2837666273117065,
+    "val_loss": 0.026021622475236653,
+    "pol_loss": 1.1796801424026488,
+    "avg_game_length": 54.8,
+    "buffer_size": 8407,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 14,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 27,
+    "total_loss": 1.2516097378730775,
+    "val_loss": 0.023122383542358876,
+    "pol_loss": 1.1591202068328856,
+    "avg_game_length": 64.73333333333333,
+    "buffer_size": 8696,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 13,
+      "max_turns": 1
+    },
+    "probe": {
+      "start": 0.050303686410188675,
+      "up_chariot": 0.04659454897046089,
+      "down_chariot": 0.0429510697722435
+    }
+  },
+  {
+    "iteration": 28,
+    "total_loss": 1.2547183775901793,
+    "val_loss": 0.020368756242096425,
+    "pol_loss": 1.1732433533668518,
+    "avg_game_length": 51.8,
+    "buffer_size": 8873,
+    "outcomes": {
+      "white": 2,
+      "black": 0,
+      "repetition": 13,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 29,
+    "total_loss": 1.2548721981048585,
+    "val_loss": 0.025248517207801344,
+    "pol_loss": 1.1538781237602234,
+    "avg_game_length": 51.6,
+    "buffer_size": 9048,
+    "outcomes": {
+      "white": 1,
+      "black": 0,
+      "repetition": 14,
+      "max_turns": 0
+    },
+    "probe": null
+  },
+  {
+    "iteration": 30,
+    "total_loss": 1.2625325632095337,
+    "val_loss": 0.024478394892066716,
+    "pol_loss": 1.1646189761161805,
+    "avg_game_length": 47.6,
+    "buffer_size": 9262,
+    "outcomes": {
+      "white": 0,
+      "black": 1,
+      "repetition": 14,
+      "max_turns": 0
+    },
+    "probe": {
+      "start": 0.13299307227134705,
+      "up_chariot": 0.1346508115530014,
+      "down_chariot": 0.1361410766839981
+    }
+  }
+]
