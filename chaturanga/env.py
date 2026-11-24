@@ -12,7 +12,7 @@ import numpy as np
 
 from .pieces import (
     EMPTY, PAWN, HORSE, ELEPHANT, CHARIOT, MINISTER, KING,
-    WHITE, BLACK, PIECE_SYMBOLS
+    WHITE
 )
 from .board import create_starting_board, make_move, render_board
 from .rules import get_all_legal_moves, get_game_outcome, is_in_check, Move

@@ -97,14 +97,13 @@ COMPONENTS = [
      "summary": "RL-style wrapper: reset / step / legal moves / outcome / copy.",
      "items": ["ChaturangaEnv.reset", "step -> (board, outcome, done)",
                "get_legal_moves", "is_game_over", "copy for tree search"]},
-    {"module": "tests/", "status": "pending",
-     "summary": "Only tests/README.md exists so far - no test modules in the repo yet.",
-     "items": ["test_moves.py (not present)", "test_rules.py (not present)",
-               "test_perft.py (not present)"]},
-    {"module": "Phase 2+ (tensors, MCTS, network)", "status": "planned",
-     "summary": "Not implemented yet, so nothing here is shown in this UI.",
-     "items": ["13x8x8 tensor encoding", "4096-dim action space + legality mask",
-               "MCTS / PUCT", "ResNet policy + value heads", "self-play loop"]},
+    {"module": "tests/", "status": "done",
+     "summary": "Full invariant test suite: perft, validity fuzzing, move legality.",
+     "items": ["tests/test_validity.py", "perft.py", "validity_test.py"]},
+    {"module": "Phase 2 (Neural, MCTS, Training)", "status": "done",
+     "summary": "Dual-headed ResNet architecture, PUCT MCTS, self-play training loop.",
+     "items": ["neural/model.py (ChaturangaNet)", "neural/encoder.py (13x8x8, 4096-dim)",
+               "training/mcts_agent.py (PUCT)", "training/self_play.py", "training/train.py"]},
 ]
 
 RULES_CARD = {

@@ -1,3 +1,5 @@
+import argparse
+import json
 import os
 import torch
 import torch.nn as nn
@@ -22,19 +24,12 @@ class ChaturangZeroLoss(nn.Module):
         super().__init__()
         self.mse = nn.MSELoss()
 
-    def forward(self, pred_policy, pred_values, target_pis, target_zs):
+    def forward(self, pred_log_p, pred_values, target_pis, target_zs):
         # Value loss: (z - v)^2
         val_loss = self.mse(pred_values.squeeze(-1), target_zs)
 
-        # Policy loss:
-        # If output from model is raw logits, compute log_softmax.
-        # If already log_softmax (<= 0), use directly to prevent double log_softmax.
-        if pred_policy.max() > 0.0:
-            log_probs = torch.log_softmax(pred_policy, dim=1)
-        else:
-            log_probs = pred_policy
-
-        pol_loss = -torch.mean(torch.sum(target_pis * log_probs, dim=1))
+        # Policy loss: - sum(pi * log_p) (pred_log_p is already log_softmax from ChaturangaNet)
+        pol_loss = -torch.mean(torch.sum(target_pis * pred_log_p, dim=1))
         return val_loss + pol_loss, val_loss.item(), pol_loss.item()
 
 
@@ -64,8 +59,8 @@ def train_step(model, optimizer, criterion, batch, device):
     batch_z = torch.tensor(np.array(zs), dtype=torch.float32, device=device)
 
     optimizer.zero_grad()
-    pred_policy, pred_v = model(batch_x)
-    total_loss, v_loss, p_loss = criterion(pred_policy, pred_v, batch_pi, batch_z)
+    pred_log_p, pred_v = model(batch_x)
+    total_loss, v_loss, p_loss = criterion(pred_log_p, pred_v, batch_pi, batch_z)
 
     total_loss.backward()
     optimizer.step()
@@ -74,46 +69,106 @@ def train_step(model, optimizer, criterion, batch, device):
 
 
 def run_training(
-    num_iterations: int = 10,
-    games_per_iter: int = 5,
+    num_iterations: int = 20,
+    games_per_iter: int = 10,
     sims_per_move: int = 40,
     batch_size: int = 32,
-    epochs_per_iter: int = 3,
-    save_dir: str = "checkpoints"
+    train_steps_per_iter: int = 20,
+    learning_rate: float = 1e-3,
+    save_dir: str = "checkpoints",
+    resume_from: str = None
 ):
-    """Main self-play training loop (suitable for local run or Google Colab)."""
+    """Main self-play training loop with logging and resume support."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Starting ChaturangZero training on device: {device}")
 
     os.makedirs(save_dir, exist_ok=True)
+    log_file = os.path.join(save_dir, "training_log.json")
+
     model = ChaturangaNet().to(device)
-
-    # Save gen_0 (untrained baseline)
-    torch.save(model.state_dict(), os.path.join(save_dir, "gen_0.pt"))
-    print(f"Saved initial checkpoint: {save_dir}/gen_0.pt")
-
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     criterion = ChaturangZeroLoss()
-    buffer = ReplayBuffer(max_size=5000)
+    buffer = ReplayBuffer(max_size=10000)
 
-    for iteration in range(1, num_iterations + 1):
+    start_iteration = 1
+    history_log = []
+
+    # Resume from checkpoint if provided
+    if resume_from and os.path.exists(resume_from):
+        print(f"Resuming training from checkpoint: {resume_from}")
+        checkpoint = torch.load(resume_from, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        if "optimizer_state_dict" in checkpoint:
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_iteration = checkpoint.get("iteration", 0) + 1
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, "r") as f:
+                    history_log = json.load(f)
+            except Exception:
+                pass
+        print(f"Resuming at iteration {start_iteration}")
+    else:
+        # Save gen_0 (untrained initialization)
+        torch.save(model.state_dict(), os.path.join(save_dir, "gen_0.pt"))
+        print(f"Saved initial baseline checkpoint: {save_dir}/gen_0.pt")
+
+    for iteration in range(start_iteration, num_iterations + 1):
         print(f"\n--- Iteration {iteration}/{num_iterations} ---")
 
-        # 1. Self-Play Phase (ensure model is in eval mode during MCTS)
+        # 1. Self-Play Phase (model in eval mode for search)
         model.eval()
         agent = SelfPlayAgent(model=model, num_simulations=sims_per_move)
+        turns_this_iter = []
         for g in range(games_per_iter):
             game_samples = agent.play_game()
             buffer.push_game(game_samples)
-            print(f"Iteration {iteration} | Game {g + 1}/{games_per_iter} completed ({len(game_samples)} turns)")
+            turns_this_iter.append(len(game_samples))
+            print(f"Iter {iteration} | Game {g + 1}/{games_per_iter} completed ({len(game_samples)} turns)")
+
+        avg_game_len = float(np.mean(turns_this_iter)) if turns_this_iter else 0.0
 
         # 2. Network Optimization Phase
+        epoch_losses = []
+        epoch_v_losses = []
+        epoch_p_losses = []
+
         if len(buffer) >= batch_size:
-            train_steps = max(epochs_per_iter, 5)
-            for step in range(train_steps):
+            for step in range(train_steps_per_iter):
                 batch = buffer.sample_batch(batch_size)
                 tot_loss, v_loss, p_loss = train_step(model, optimizer, criterion, batch, device)
-                print(f"Step {step + 1}/{train_steps} - Loss: {tot_loss:.4f} (Val: {v_loss:.4f}, Pol: {p_loss:.4f})")
+                epoch_losses.append(tot_loss)
+                epoch_v_losses.append(v_loss)
+                epoch_p_losses.append(p_loss)
+
+            mean_tot = float(np.mean(epoch_losses))
+            mean_v = float(np.mean(epoch_v_losses))
+            mean_p = float(np.mean(epoch_p_losses))
+            print(f"Optimization - Avg Loss: {mean_tot:.4f} (Val: {mean_v:.4f}, Pol: {mean_p:.4f})")
+        else:
+            mean_tot, mean_v, mean_p = 0.0, 0.0, 0.0
+
+        # Record metrics
+        iter_record = {
+            "iteration": iteration,
+            "total_loss": mean_tot,
+            "val_loss": mean_v,
+            "pol_loss": mean_p,
+            "avg_game_length": avg_game_len,
+            "buffer_size": len(buffer),
+        }
+        history_log.append(iter_record)
+
+        # Write training_log.json to disk (Person 4 will plot this)
+        with open(log_file, "w") as f:
+            json.dump(history_log, f, indent=2)
+
+        # Save checkpoint_latest.pt for crash resilience
+        torch.save({
+            "iteration": iteration,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+        }, os.path.join(save_dir, "checkpoint_latest.pt"))
 
         # Save mid-way checkpoint
         if iteration == num_iterations // 2:
@@ -123,7 +178,33 @@ def run_training(
     # Save final checkpoint
     torch.save(model.state_dict(), os.path.join(save_dir, "gen_final.pt"))
     print(f"\nTraining complete! Final model saved to: {save_dir}/gen_final.pt")
+    print(f"Training log saved to: {log_file}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Train ChaturangZero via Self-Play Reinforcement Learning")
+    parser.add_argument("--iterations", type=int, default=20, help="Total training iterations (default: 20)")
+    parser.add_argument("--games-per-iter", type=int, default=10, help="Self-play games per iteration (default: 10)")
+    parser.add_argument("--sims", type=int, default=40, help="MCTS simulations per move (default: 40)")
+    parser.add_argument("--batch-size", type=int, default=32, help="Mini-batch size (default: 32)")
+    parser.add_argument("--train-steps", type=int, default=20, help="Gradient steps per iteration (default: 20)")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)")
+    parser.add_argument("--save-dir", type=str, default="checkpoints", help="Directory to save checkpoints and logs")
+    parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint_latest.pt to resume from")
+
+    args = parser.parse_args()
+
+    run_training(
+        num_iterations=args.iterations,
+        games_per_iter=args.games_per_iter,
+        sims_per_move=args.sims,
+        batch_size=args.batch_size,
+        train_steps_per_iter=args.train_steps,
+        learning_rate=args.lr,
+        save_dir=args.save_dir,
+        resume_from=args.resume
+    )
 
 
 if __name__ == "__main__":
-    run_training(num_iterations=2, games_per_iter=2, sims_per_move=10, batch_size=8)
+    main()
