@@ -231,6 +231,30 @@ class Handler(BaseHTTPRequestHandler):
                     result["move"] = [list(start), list(end)]
                     self._send_json({"result": result, "state": SESSION.state()})
 
+                elif route in ("/api/ai_move", "/api/chaturang_move"):
+                    from training.mcts_agent import ChaturangPlayer
+                    import os
+                    model = None
+                    ckpt_path = os.path.join(REPO_ROOT, "checkpoints", "gen_final.pt")
+                    if os.path.exists(ckpt_path):
+                        try:
+                            import torch
+                            try:
+                                from neural.model import ChaturangaNet
+                            except ImportError:
+                                from training.mcts_agent import DummyNeuralNet as ChaturangaNet
+                            model = ChaturangaNet()
+                            model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+                            model.eval()
+                        except Exception as e:
+                            print(f"Warning loading checkpoint: {e}")
+                    player = ChaturangPlayer(model=model, num_sims=20, temperature=0.1)
+                    move = player.get_move(SESSION.env.board, SESSION.env.current_player)
+                    start, end = move
+                    result = SESSION.play(start, end)
+                    result["move"] = [list(start), list(end)]
+                    self._send_json({"result": result, "state": SESSION.state()})
+
                 elif route == "/api/perft":
                     depth = max(1, min(4, int(body.get("depth", 2))))
                     self._send_json({"result": SESSION.run_perft(depth),

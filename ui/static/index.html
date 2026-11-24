@@ -97,9 +97,11 @@
         <button class="btn primary" id="btnNew">New game <kbd>N</kbd></button>
         <button class="btn" id="btnUndo">Undo <kbd>U</kbd></button>
         <button class="btn" id="btnRandom">Random legal move <kbd>R</kbd></button>
+        <button class="btn" id="btnAI" style="background:#2e7d32;color:#fff;border-color:#1b5e20;">ChaturangZero Move <kbd>Z</kbd></button>
         <button class="btn" id="btnAuto">Auto-play <kbd>A</kbd></button>
       </div>
       <div class="control-group toggles">
+        <label class="switch" title="Automatically trigger ChaturangZero AI move as Black"><input type="checkbox" id="tgVsAI"><span>Play vs AI</span></label>
         <label class="switch"><input type="checkbox" id="tgLegal" checked><span>Legal targets</span></label>
         <label class="switch"><input type="checkbox" id="tgPseudo"><span>Pseudo-legal <kbd>P</kbd></span></label>
         <label class="switch" title="Probes every square with rules.is_in_check"><input type="checkbox" id="tgAttack"><span>Threat map <kbd>T</kbd></span></label>

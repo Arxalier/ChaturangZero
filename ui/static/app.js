@@ -468,6 +468,10 @@ async function playMove(from, to) {
   if (res.result.captured) bits.push('capture');
   if (res.result.promoted) bits.push('Padati promoted to Mantri (board.make_move)');
   if (bits.length) toast(bits.join(' · '));
+
+  if ($('tgVsAI') && $('tgVsAI').checked && !res.result.done && res.state.active_player === -1) {
+    setTimeout(aiMove, 250);
+  }
 }
 
 async function selectSquare(r, c) {
@@ -527,6 +531,19 @@ async function randomMove() {
   return !res.result.done;
 }
 
+async function aiMove() {
+  const btn = $('btnAI');
+  if (btn) btn.disabled = true;
+  const res = await apiPost('/api/ai_move');
+  if (btn) btn.disabled = false;
+  if (!res.result.ok) { toast(res.result.error || 'No AI move available', true); return false; }
+  S.selected = null; S.inspect = null;
+  applyState(res.state);
+  drawInspector();
+  await refreshAttacks();
+  return !res.result.done;
+}
+
 function stopAuto() {
   if (S.auto) { clearInterval(S.auto); S.auto = null; }
   $('btnAuto').classList.remove('active');
@@ -575,6 +592,7 @@ function wire() {
   $('btnUndo').onclick = undo;
   $('bannerUndo').onclick = undo;
   $('btnRandom').onclick = randomMove;
+  if ($('btnAI')) $('btnAI').onclick = aiMove;
   $('btnAuto').onclick = toggleAuto;
   $('btnPerft').onclick = runPerft;
 
@@ -614,6 +632,7 @@ function wire() {
     else if (k === 'n') newGame();
     else if (k === 'u') undo();
     else if (k === 'r') randomMove();
+    else if (k === 'z') aiMove();
     else if (k === 'a') toggleAuto();
     else if (k === 'p') { $('tgPseudo').checked = !$('tgPseudo').checked; drawBoard(); }
     else if (k === 't') { $('tgAttack').checked = !$('tgAttack').checked; $('tgAttack').onchange(); }
