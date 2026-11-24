@@ -177,7 +177,8 @@ class NeuralMCTS:
         # Base history tracking for 3-fold repetition awareness in search tree
         root_key = initial_board.tobytes() + bytes([1 if current_player == 1 else 0])
         base_counts = dict(past_position_counts) if past_position_counts else {}
-        base_counts[root_key] = base_counts.get(root_key, 0) + 1
+        if root_key not in base_counts:
+            base_counts[root_key] = 1
 
         # Run MCTS simulations
         for _ in range(self.num_simulations):
