@@ -101,7 +101,7 @@ def run_training(
     num_iterations: int = 30,
     games_per_iter: int = 15,
     sims_per_move: int = 25,
-    max_turns: int = 100,
+    max_turns: int = 120,
     batch_size: int = 64,
     train_steps_per_iter: int = 25,
     learning_rate: float = 1e-3,
@@ -222,7 +222,7 @@ def main():
     parser.add_argument("--iterations", type=int, default=30, help="Total training iterations (default: 30)")
     parser.add_argument("--games-per-iter", type=int, default=15, help="Self-play games per iteration (default: 15)")
     parser.add_argument("--sims", type=int, default=25, help="MCTS simulations per move (default: 25)")
-    parser.add_argument("--max-turns", type=int, default=100, help="Max turns per game before draw (default: 100)")
+    parser.add_argument("--max-turns", type=int, default=120, help="Max turns per game before draw (default: 120)")
     parser.add_argument("--batch-size", type=int, default=64, help="Mini-batch size (default: 64)")
     parser.add_argument("--train-steps", type=int, default=25, help="Gradient steps per iteration (default: 25)")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)")

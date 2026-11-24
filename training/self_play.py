@@ -2,8 +2,28 @@ import random
 from typing import List, Tuple, Dict
 import numpy as np
 
-from chaturanga import ChaturangaEnv, get_game_outcome
+from chaturanga import (
+    ChaturangaEnv, get_game_outcome,
+    PAWN, HORSE, ELEPHANT, CHARIOT, MINISTER
+)
 from training.mcts_agent import NeuralMCTS, default_move_to_action
+
+# Traditional Chaturanga piece valuation for soft adjudication
+PIECE_VALUES = {
+    PAWN: 1.0,
+    HORSE: 3.0,
+    ELEPHANT: 3.0,
+    CHARIOT: 4.0,
+    MINISTER: 5.0,
+}
+
+
+def material_diff(board: np.ndarray) -> float:
+    """Returns White material minus Black material based on standard piece values."""
+    diff = 0.0
+    for piece_type, val in PIECE_VALUES.items():
+        diff += val * (np.count_nonzero(board == piece_type) - np.count_nonzero(board == -piece_type))
+    return float(diff)
 
 # Try to use Person 1's encoder if available, otherwise use default
 try:
@@ -40,12 +60,12 @@ class SelfPlayAgent:
         model,
         num_simulations: int = 25,
         temp_threshold: int = 35,
-        max_turns: int = 100,
+        max_turns: int = 120,
         rep_penalty: float = -0.15,
     ):
         self.mcts = NeuralMCTS(model=model, num_simulations=num_simulations)
         self.temp_threshold = temp_threshold  # High temp (1.0) for first N moves, 0.25 after
-        self.max_turns = max_turns            # Prevents infinite repetition cycles
+        self.max_turns = max_turns            # Prevents infinite repetition cycles (120 provides room to convert)
         self.rep_penalty = rep_penalty        # Small penalty to break 3-fold repetition draw traps
         self.last_result: str = "max_turns"
 
@@ -106,17 +126,23 @@ class SelfPlayAgent:
         if final_outcome is None:
             winner = 0
             self.last_result = "repetition" if ended_by_rep else "max_turns"
+            mat_diff = material_diff(env.board)
         else:
             winner = env.current_player if final_outcome == 1 else -env.current_player
             self.last_result = "white" if winner == 1 else "black"
+            mat_diff = 0.0
 
-        # Build final training samples with target z (+1 for win, -1 for loss, -0.15 for repetition)
+        # Build final training samples with target z:
+        # Real terminal wins (Checkmate, Bare King) yield +/-1.0 (strictly optimal)
+        # Truncated or draw games receive soft material adjudication in (-0.8, 0.8)
         samples = []
         for board_snap, step_player, pi_vec in game_history:
             if winner != 0:
                 z = 1.0 if step_player == winner else -1.0
             else:
-                z = self.rep_penalty if ended_by_rep else 0.0
+                z = float(0.8 * np.tanh((mat_diff * step_player) / 6.0))
+                if ended_by_rep:
+                    z = max(-1.0, z - 0.1)  # Slight contempt penalty for repeating
             samples.append((board_snap, step_player, pi_vec, z))
 
         return samples
