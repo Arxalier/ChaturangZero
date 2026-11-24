@@ -37,8 +37,28 @@ class ChaturangZeroLoss(nn.Module):
 AlphaZeroLoss = ChaturangZeroLoss
 
 
-def train_step(model, optimizer, criterion, batch, device):
-    """Performs one gradient update over a sampled mini-batch."""
+# Action permutation indices for horizontal reflection symmetry
+_FLIP_ACTION_MAP = None
+
+
+def _get_flip_map(device):
+    """Precomputes or returns cached horizontal reflection action map."""
+    global _FLIP_ACTION_MAP
+    if _FLIP_ACTION_MAP is None:
+        mapping = np.zeros(4096, dtype=np.int64)
+        for a in range(4096):
+            f, t = divmod(a, 64)
+            sr, sc = divmod(f, 8)
+            er, ec = divmod(t, 8)
+            f_flip = sr * 8 + (7 - sc)
+            t_flip = er * 8 + (7 - ec)
+            mapping[a] = f_flip * 64 + t_flip
+        _FLIP_ACTION_MAP = torch.tensor(mapping, dtype=torch.long)
+    return _FLIP_ACTION_MAP.to(device)
+
+
+def train_step(model, optimizer, criterion, batch, device, augment: bool = True):
+    """Performs one gradient update over a sampled mini-batch, with optional symmetry augmentation."""
     model.train()
 
     # Unpack batch
@@ -58,6 +78,15 @@ def train_step(model, optimizer, criterion, batch, device):
     batch_pi = torch.tensor(np.array(pis), dtype=torch.float32, device=device)
     batch_z = torch.tensor(np.array(zs), dtype=torch.float32, device=device)
 
+    # Left-right horizontal flip data augmentation (2x data efficiency for free)
+    if augment:
+        flip_map = _get_flip_map(device)
+        batch_x_flip = torch.flip(batch_x, dims=[3])  # Width/column reflection
+        batch_pi_flip = batch_pi[:, flip_map]
+        batch_x = torch.cat([batch_x, batch_x_flip], dim=0)
+        batch_pi = torch.cat([batch_pi, batch_pi_flip], dim=0)
+        batch_z = torch.cat([batch_z, batch_z], dim=0)
+
     optimizer.zero_grad()
     pred_log_p, pred_v = model(batch_x)
     total_loss, v_loss, p_loss = criterion(pred_log_p, pred_v, batch_pi, batch_z)
@@ -70,8 +99,9 @@ def train_step(model, optimizer, criterion, batch, device):
 
 def run_training(
     num_iterations: int = 20,
-    games_per_iter: int = 10,
-    sims_per_move: int = 40,
+    games_per_iter: int = 15,
+    sims_per_move: int = 20,
+    max_turns: int = 90,
     batch_size: int = 32,
     train_steps_per_iter: int = 20,
     learning_rate: float = 1e-3,
@@ -118,7 +148,7 @@ def run_training(
 
         # 1. Self-Play Phase (model in eval mode for search)
         model.eval()
-        agent = SelfPlayAgent(model=model, num_simulations=sims_per_move)
+        agent = SelfPlayAgent(model=model, num_simulations=sims_per_move, max_turns=max_turns)
         turns_this_iter = []
         for g in range(games_per_iter):
             game_samples = agent.play_game()
@@ -184,8 +214,9 @@ def run_training(
 def main():
     parser = argparse.ArgumentParser(description="Train ChaturangZero via Self-Play Reinforcement Learning")
     parser.add_argument("--iterations", type=int, default=20, help="Total training iterations (default: 20)")
-    parser.add_argument("--games-per-iter", type=int, default=10, help="Self-play games per iteration (default: 10)")
-    parser.add_argument("--sims", type=int, default=40, help="MCTS simulations per move (default: 40)")
+    parser.add_argument("--games-per-iter", type=int, default=15, help="Self-play games per iteration (default: 15)")
+    parser.add_argument("--sims", type=int, default=20, help="MCTS simulations per move (default: 20)")
+    parser.add_argument("--max-turns", type=int, default=90, help="Max turns per game before draw (default: 90)")
     parser.add_argument("--batch-size", type=int, default=32, help="Mini-batch size (default: 32)")
     parser.add_argument("--train-steps", type=int, default=20, help="Gradient steps per iteration (default: 20)")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate (default: 1e-3)")
@@ -198,6 +229,7 @@ def main():
         num_iterations=args.iterations,
         games_per_iter=args.games_per_iter,
         sims_per_move=args.sims,
+        max_turns=args.max_turns,
         batch_size=args.batch_size,
         train_steps_per_iter=args.train_steps,
         learning_rate=args.lr,

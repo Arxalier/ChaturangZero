@@ -50,12 +50,13 @@ def find_king(board: np.ndarray, player: int) -> Optional[Tuple[int, int]]:
     return None
 
 
-def is_in_check(board: np.ndarray, player: int) -> bool:
+def is_in_check(board: np.ndarray, player: int, king_pos: Optional[Tuple[int, int]] = None) -> bool:
     """
     Determines if the specified player's King is under attack by any enemy piece.
     Optimized via direct attack rays and jumps from the King's position.
     """
-    king_pos = find_king(board, player)
+    if king_pos is None:
+        king_pos = find_king(board, player)
     if not king_pos:
         return False
 
@@ -123,11 +124,13 @@ def get_all_legal_moves(board: np.ndarray, player: int) -> List[Move]:
     """
     Generates all STRICTLY LEGAL moves for the given player.
     Filters out any move that leaves or places the player's King in check.
+    Optimized via in-place board mutation to avoid repeated array allocations.
     
     Returns:
         List of tuples: [((start_r, start_c), (end_r, end_c)), ...]
     """
     legal_moves: List[Move] = []
+    king_pos = find_king(board, player)
 
     for r in range(8):
         for c in range(8):
@@ -149,10 +152,23 @@ def get_all_legal_moves(board: np.ndarray, player: int) -> List[Move]:
                 elif abs_piece == KING:
                     pseudo_moves = get_king_moves(board, r, c, player)
 
-                # Filter out moves that leave own King in check
+                # Filter out moves that leave own King in check (in-place mutation)
                 for end_pos in pseudo_moves:
-                    simulated_board = make_move(board, (r, c), end_pos)
-                    if not is_in_check(simulated_board, player):
+                    er, ec = end_pos
+                    target_piece = board[er, ec]
+
+                    # Mutate board in place (zero copy)
+                    board[r, c] = 0
+                    board[er, ec] = piece
+
+                    kpos = end_pos if abs_piece == KING else king_pos
+                    in_chk = is_in_check(board, player, king_pos=kpos)
+
+                    # Restore board state immediately
+                    board[r, c] = piece
+                    board[er, ec] = target_piece
+
+                    if not in_chk:
                         legal_moves.append(((r, c), end_pos))
 
     return legal_moves

@@ -303,6 +303,8 @@ class ChaturangPlayer(BasePlayer):
             if self.temperature < 0.05:
                 return moves[int(np.argmax(probs))]
 
+            # Safeguard: normalize by max probability before temperature scaling to prevent underflow
+            probs = probs / np.max(probs)
             probs = probs ** (1.0 / max(self.temperature, 1e-4))
             sum_p = probs.sum()
             probs = probs / (sum_p if sum_p > 0 else 1.0)
