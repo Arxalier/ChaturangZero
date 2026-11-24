@@ -119,7 +119,7 @@ def generate_dataset(num_games: int = 200, max_turns: int = 100):
             samples.append((b, p, act_idx, float(np.clip(z, -1.0, 1.0)), mask))
 
         if (g + 1) % 40 == 0:
-            print(f"Generated {g + 1}/{num_games} games ({len(samples)} positions) in {time.time() - t0:.1f}s")
+            print(f"Generated {g + 1}/{num_games} games ({len(samples)} positions) in {time.time() - t0:.1f}s", flush=True)
     return samples
 
 
@@ -186,7 +186,7 @@ def main():
 
         scheduler.step()
         mt, mv, mp = float(np.mean(tot_l)), float(np.mean(val_l)), float(np.mean(pol_l))
-        print(f"Epoch {epoch:2d}/{args.epochs} | Loss: {mt:.4f} (Val: {mv:.4f}, Pol: {mp:.4f})")
+        print(f"Epoch {epoch:2d}/{args.epochs} | Loss: {mt:.4f} (Val: {mv:.4f}, Pol: {mp:.4f})", flush=True)
         probe = evaluate_probe(model, device) if epoch in (1, args.epochs // 2, args.epochs) else None
         log.append({"iteration": epoch, "total_loss": mt, "val_loss": mv, "pol_loss": mp, "probe": probe})
 
