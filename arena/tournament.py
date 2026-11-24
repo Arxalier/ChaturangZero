@@ -402,21 +402,37 @@ def run_tournament(specs: Sequence[str], games_per_pair: int = 10, fmt: str = "r
         log_path = os.path.join(out_dir, "games.jsonl")
         cfg_path = os.path.join(out_dir, "config.json")
         current = {**config, "players": dict(zip(labels, specs))}
+        previous_players: Dict[str, str] = {}
         if resume and os.path.exists(cfg_path):
             with open(cfg_path) as f:
                 previous = json.load(f)
-            if previous != current:
+            previous_players = previous.pop("players", {})
+            same_settings = previous == config
+            if not same_settings:
                 if verbose:
-                    print("Config changed since the last run in this folder; starting fresh.")
+                    print("Settings changed since the last run in this folder; starting fresh.")
                 resume = False
         if not resume and os.path.exists(log_path):
             os.remove(log_path)
         with open(cfg_path, "w") as f:
             json.dump(current, f, indent=2)
-        done = load_games(log_path) if resume else None
-        if done:  # drop games whose labels no longer match the schedule
-            valid = {(tuple(t.pair), t.k): (t.white_label, t.black_label) for t in tasks}
-            done = {k: v for k, v in done.items() if valid.get(k) == (v["white"], v["black"])}
+        done = None
+        if resume:
+            # Games are seeded by player labels, so a game between two players whose specs have
+            # not changed is identical to one played before: keep it even if players were added.
+            unchanged = {lab for lab, sp in current["players"].items()
+                         if previous_players.get(lab, sp) == sp}
+            index = {(t.white_label, t.black_label, t.k): t for t in tasks}
+            done = {}
+            for d in load_games(log_path).values():
+                t = index.get((d["white"], d["black"], d["k"]))
+                if (t is not None and d.get("seed") == t.seed
+                        and d["white"] in unchanged and d["black"] in unchanged):
+                    d["pair"] = list(t.pair)
+                    done[(tuple(t.pair), t.k)] = d
+            with open(log_path, "w") as f:  # rewrite with the current pair indices
+                for d in done.values():
+                    f.write(json.dumps(d) + "\n")
 
     games = execute(tasks, workers, log_path, done, verbose)
     res = aggregate(labels, specs, games, anchor=anchor, anchor_elo=anchor_elo,

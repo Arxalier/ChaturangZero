@@ -1,7 +1,11 @@
 player,elo,ci_low,ci_high,games
-Minimax-d2,1026.5,927.8,1161.3,100
-AZ-Master,632.5,533.3,768.9,100
-Greedy-1ply,585.1,501.8,687.1,100
-AZ-Intermediate,285.3,215.0,379.0,100
-AZ-Novice,167.3,96.1,245.8,100
-Random,0.0,0.0,0.0,100
+Minimax-d2,671.9,612.1,736.5,180
+ChanakyaBot,617.6,546.4,688.0,180
+PaniniBot,617.6,551.0,686.6,180
+AryabhataBot,607.7,542.5,679.6,180
+AZ-Master,498.8,433.1,566.1,180
+Greedy-1ply,429.4,371.6,488.6,180
+AZ-Intermediate,274.6,216.9,335.2,180
+AZ-Novice,151.8,95.8,205.6,180
+NoviceBot,148.9,94.4,203.1,180
+Random,0.0,0.0,0.0,180
