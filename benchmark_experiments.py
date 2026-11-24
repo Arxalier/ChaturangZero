@@ -21,7 +21,7 @@ from neural.model import ChaturangaNet
 from training.mcts_agent import ChaturangPlayer
 
 
-def run_experiment(num_games: int = 10, sims: int = 200, max_turns: int = 250):
+def run_experiment(num_games: int = 10, sims: int = 50, max_turns: int = 250):
     model_path = "checkpoints/gen_final.pt"
     print("=" * 72)
     print(f"EXPERIMENT: Neural MCTS @ {sims} Sims vs Random Bot ({num_games} Games)")
@@ -121,19 +121,19 @@ def run_experiment(num_games: int = 10, sims: int = 200, max_turns: int = 250):
     # Append to report.txt
     report_entry = []
     report_entry.append("\n" + "=" * 75)
-    report_entry.append(f"ABLATION STUDY: MCTS LOOKAHEAD DEPTH & TRAINING REGIME COMPARISON")
+    report_entry.append(f"ABLATION BENCHMARK 2: FINE-TUNED MODEL (@ {sims} Sims)")
     report_entry.append("=" * 75)
-    report_entry.append("FORMER BASELINE (Pre-Bootstrap Model @ 20-40 Sims):")
-    report_entry.append("  * Training Regime : Pure Self-Play (Cold-Start Draw Collapse)")
-    report_entry.append("  * Search Depth    : 20-40 MCTS simulations")
-    report_entry.append("  * 10-Game Result  : 0 AI Wins (0.0%), 1 Random Win (10.0%), 9 Draws (90.0%)")
-    report_entry.append("  * Root Cause      : Blind Value Head (V ≈ +0.13 constant), MCTS Q ≈ 0")
-    report_entry.append("-" * 75)
-    report_entry.append(f"CURRENT EXPERIMENT (Bootstrapped Fine-Tuned Model @ {sims} Sims):")
-    report_entry.append(f"  * Training Regime : AlphaGo-Style Teacher Transfer Learning (12 Epochs)")
-    report_entry.append(f"  * Search Depth    : {sims} MCTS simulations (deep tactical calculation)")
-    report_entry.append(f"  * 10-Game Result  : {ai_wins} AI Wins ({ai_wins/num_games:.0%}), {random_wins} Random Wins ({random_wins/num_games:.0%}), {draws} Draws ({draws/num_games:.0%})")
+    report_entry.append(f"Configuration:")
+    report_entry.append(f"  * Model Checkpoint: {model_path} (AlphaGo-Style Teacher Bootstrapping)")
+    report_entry.append(f"  * MCTS Depth      : {sims} simulations per move")
+    report_entry.append(f"  * Max Plies Cap   : {max_turns} plies")
+    report_entry.append(f"  * Opponent        : Uniform Random Bot")
     report_entry.append(f"  * Total Test Time : {total_time:.1f} seconds")
+    report_entry.append("-" * 75)
+    report_entry.append(f"Summary:")
+    report_entry.append(f"  * ChaturangZero (AI) Wins : {ai_wins} / {num_games} ({ai_wins/num_games:.1%})")
+    report_entry.append(f"  * Random Bot Wins         : {random_wins} / {num_games} ({random_wins/num_games:.1%})")
+    report_entry.append(f"  * Draws                   : {draws} / {num_games} ({draws/num_games:.1%})")
     report_entry.append("-" * 75)
     report_entry.append(f"{'Game':<6} | {'AI Color':<10} | {'Plies':<8} | {'Result':<12} | {'Termination':<18} | {'Pieces':<12}")
     report_entry.append("-" * 75)
@@ -148,6 +148,6 @@ def run_experiment(num_games: int = 10, sims: int = 200, max_turns: int = 250):
 
 
 if __name__ == "__main__":
-    sims = int(sys.argv[1]) if len(sys.argv) > 1 else 200
+    sims = int(sys.argv[1]) if len(sys.argv) > 1 else 50
     games = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     run_experiment(num_games=games, sims=sims)

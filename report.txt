@@ -21,4 +21,41 @@ ANALYSIS & CONCLUSION:
    Gaining material produces strictly positive evaluations; losing material produces negative evaluations.
 2. Relative Piece Hierarchy:
    Chariot (Ratha) has the highest delta, exactly matching historical Chaturanga values where the Ratha is the most powerful piece.
-3. Monotonicity: White Up Major (+Ratha +Ashwa) yields the strongest positive signal (+0.366), showing the network properly accumulates advantages.
+3. Monotonicity: White Up Major (+Ratha +Ashwa) yields the strongest positive signal (+0.960), showing the network properly accumulates advantages.
+
+
+===========================================================================
+ABLATION BENCHMARK 1: FORMER BASELINE (Pre-Bootstrap Model @ 20 Sims)
+===========================================================================
+Configuration:
+  * Model Checkpoint: gen_final_original.pt (Pure RL 30 Iterations)
+  * MCTS Depth      : 20 simulations per move
+  * Max Plies Cap   : 120 plies (premature cutoff)
+  * Opponent        : Uniform Random Bot
+
+Game Results:
+Game 01/10 | AI (White) vs Random (Black) | 120 plies | DRAW (max_turns)          [Pcs: W=8, B=8]
+Game 02/10 | AI (Black) vs Random (White) | 120 plies | DRAW (max_turns)          [Pcs: W=7, B=7]
+Game 03/10 | AI (White) vs Random (Black) |  48 plies | DRAW (3-fold repetition)  [Pcs: W=16, B=16]
+Game 04/10 | AI (Black) vs Random (White) | 120 plies | DRAW (max_turns)          [Pcs: W=9, B=9]
+Game 05/10 | AI (White) vs Random (Black) |  52 plies | DRAW (3-fold repetition)  [Pcs: W=15, B=15]
+Game 06/10 | AI (Black) vs Random (White) | 114 plies | RANDOM WIN (Bare King)   [Pcs: W=2, B=1]
+Game 07/10 | AI (White) vs Random (Black) | 120 plies | DRAW (max_turns)          [Pcs: W=6, B=6]
+Game 08/10 | AI (Black) vs Random (White) |  44 plies | DRAW (3-fold repetition)  [Pcs: W=16, B=16]
+Game 09/10 | AI (White) vs Random (Black) | 120 plies | DRAW (max_turns)          [Pcs: W=8, B=8]
+Game 10/10 | AI (Black) vs Random (White) | 120 plies | DRAW (max_turns)          [Pcs: W=7, B=7]
+
+Summary:
+  * ChaturangZero (AI) Wins : 0 / 10 (0.0%)
+  * Random Bot Wins         : 1 / 10 (10.0%)
+  * Draws                   : 9 / 10 (90.0%)
+  * Average Game Length     : 97.8 plies
+
+Diagnosis:
+  1. Flat Value Function: Because V(s) was numb (+0.13 everywhere), the old model could not
+     evaluate piece captures. MCTS Q-values were effectively 0, so it shuffled without attacking.
+  2. Repetition Trap: Without move penalty and with 0.15 temperature at turn 25, the bot fell
+     into endless Elephant/Horse cycles.
+  3. Premature 120-Ply Cutoff: In ancient Chaturanga, 120 plies is only 60 turns per side.
+     Cutting games at 120 plies forcibly prevented endgames from converting.
+===========================================================================
