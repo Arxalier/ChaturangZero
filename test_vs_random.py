@@ -2,11 +2,12 @@
 """
 test_vs_random.py
 -----------------
-Runs a 10-game benchmark match of ChaturangZero (Neural MCTS) vs Random Bot.
-Alternates colors: 5 games as White, 5 games as Black.
+Runs a benchmark match of ChaturangZero (Neural MCTS) vs Random Bot.
+Alternates sides: odd games as White, even games as Black.
 """
 
 import sys
+import argparse
 import random
 import torch
 import numpy as np
@@ -19,11 +20,16 @@ from neural.model import ChaturangaNet
 from training.mcts_agent import ChaturangPlayer
 
 
-def run_benchmark(model_path: str = "checkpoints/gen_final.pt", num_games: int = 10, sims: int = 25):
-    print("=" * 65)
+def run_benchmark(
+    model_path: str = "checkpoints/gen_final.pt",
+    num_games: int = 10,
+    sims: int = 30,
+    max_turns: int = 300
+):
+    print("=" * 70)
     print(f"CHATURANGZERO BENCHMARK: Neural MCTS vs Random Bot ({num_games} Games)")
-    print(f"Model Checkpoint: {model_path} | MCTS Sims: {sims}")
-    print("=" * 65)
+    print(f"Model: {model_path} | MCTS Sims: {sims} | Max Plies (Capacity): {max_turns}")
+    print("=" * 70)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ChaturangaNet().to(device)
@@ -53,7 +59,6 @@ def run_benchmark(model_path: str = "checkpoints/gen_final.pt", num_games: int =
         env = ChaturangaEnv()
         ai_player.reset()
         position_counts = {}
-        max_turns = 120
         turn = 0
         ended_by = "max_turns"
 
@@ -83,30 +88,50 @@ def run_benchmark(model_path: str = "checkpoints/gen_final.pt", num_games: int =
             turn += 1
 
         final_outcome = get_game_outcome(env.board, env.current_player)
+        w_pcs = int(np.count_nonzero(env.board > 0))
+        b_pcs = int(np.count_nonzero(env.board < 0))
+
         if final_outcome is None:
-            result_str = f"DRAW ({ended_by})"
+            result_str = f"DRAW ({ended_by}) [Pcs: W={w_pcs}, B={b_pcs}]"
             draws += 1
         else:
             winner = env.current_player if final_outcome == 1 else -env.current_player
             if winner == ai_color:
-                result_str = "AI WIN"
+                result_str = f"AI WIN ({ended_by}) [Pcs: W={w_pcs}, B={b_pcs}]"
                 ai_wins += 1
             else:
-                result_str = "RANDOM WIN"
+                result_str = f"RANDOM WIN ({ended_by}) [Pcs: W={w_pcs}, B={b_pcs}]"
                 random_wins += 1
 
-        print(f"Game {game_idx:02d}/{num_games:02d} | {ai_name} vs {opp_name} | {turn:3d} turns | {result_str}")
+        print(f"Game {game_idx:02d}/{num_games:02d} | {ai_name:<10} vs {opp_name:<12} | {turn:3d} plies | {result_str}")
 
-    print("\n" + "=" * 65)
+    print("\n" + "=" * 70)
     print("FINAL BENCHMARK RESULTS")
-    print("=" * 65)
+    print("=" * 70)
     print(f"ChaturangZero (AI) Wins : {ai_wins} / {num_games} ({ai_wins / num_games:.1%})")
     print(f"Random Bot Wins         : {random_wins} / {num_games} ({random_wins / num_games:.1%})")
     print(f"Draws                   : {draws} / {num_games} ({draws / num_games:.1%})")
-    print("=" * 65)
+    print("=" * 70)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Benchmark ChaturangZero vs Random Bot")
+    parser.add_argument("sims_pos", nargs="?", type=int, default=None, help="MCTS sims (positional)")
+    parser.add_argument("games_pos", nargs="?", type=int, default=None, help="Num games (positional)")
+    parser.add_argument("turns_pos", nargs="?", type=int, default=None, help="Max plies (positional)")
+    parser.add_argument("--sims", type=int, default=30, help="MCTS simulations per move (default: 30)")
+    parser.add_argument("--games", type=int, default=10, help="Number of benchmark games (default: 10)")
+    parser.add_argument("--max-turns", type=int, default=300, help="Max plies before draw (default: 300)")
+    parser.add_argument("--model", type=str, default="checkpoints/gen_final.pt", help="Path to checkpoint")
+    args = parser.parse_args()
+
+    # Allow positional arguments to override flags for backward compatibility
+    sims = args.sims_pos if args.sims_pos is not None else args.sims
+    games = args.games_pos if args.games_pos is not None else args.games
+    max_turns = args.turns_pos if args.turns_pos is not None else args.max_turns
+
+    run_benchmark(model_path=args.model, num_games=games, sims=sims, max_turns=max_turns)
 
 
 if __name__ == "__main__":
-    sims = int(sys.argv[1]) if len(sys.argv) > 1 else 20
-    games = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-    run_benchmark(num_games=games, sims=sims)
+    main()
