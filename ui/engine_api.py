@@ -109,6 +109,7 @@ class Session:
         self.calls: List[str] = []
         self.scenario: str = "Standard opening position"
         self.note: str = ""
+        self.starting_player: int = WHITE
 
     # ---------------------------------------------------------------- helpers
 
@@ -130,16 +131,17 @@ class Session:
         self.capture_stack.clear()
         self.scenario = "Standard opening position"
         self.note = ""
+        self.starting_player = WHITE
 
     def load_position(self, board: np.ndarray, player: int, scenario: str, note: str = "") -> None:
-        self.env.board = board
-        self.env.current_player = player
+        self.env.set_state(board, player)
         self.env.move_history = []
         self.undo_stack.clear()
         self.captured.clear()
         self.capture_stack.clear()
         self.scenario = scenario
         self.note = note
+        self.starting_player = player
 
     def play(self, start: Tuple[int, int], end: Tuple[int, int]) -> Dict[str, Any]:
         """Validates a move against get_all_legal_moves, then applies it via env.step."""
@@ -176,8 +178,7 @@ class Session:
         if not self.undo_stack:
             return False
         board, player = self.undo_stack.pop()
-        self.env.board = board
-        self.env.current_player = player
+        self.env.set_state(board, player)
         if self.env.move_history:
             self.env.move_history.pop()
         if self.capture_stack:
@@ -276,9 +277,10 @@ class Session:
 
         history = []
         for i, ((sr, sc), (er, ec)) in enumerate(self.env.move_history):
+            p = self.starting_player if i % 2 == 0 else -self.starting_player
             history.append({
                 "index": i + 1,
-                "player": "White" if i % 2 == 0 else "Black",
+                "player": "White" if p == WHITE else "Black",
                 "from": [sr, sc], "to": [er, ec],
                 "text": f"{algebraic((sr, sc))}-{algebraic((er, ec))}",
                 "coords": f"({sr},{sc})->({er},{ec})",

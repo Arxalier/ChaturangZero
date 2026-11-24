@@ -41,10 +41,12 @@ from .rules import (
     perft
 )
 from .env import ChaturangaEnv
+from .player import BasePlayer
 
 __all__ = [
-    # Environment
+    # Environment & Player
     "ChaturangaEnv",
+    "BasePlayer",
     "Move",
     # Pieces
     "EMPTY", "PAWN", "HORSE", "ELEPHANT", "CHARIOT", "MINISTER", "KING",

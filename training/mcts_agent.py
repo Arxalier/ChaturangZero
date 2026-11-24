@@ -1,25 +1,12 @@
-# neural mcts and chaturang ai
-# the neural network needs to provide 2 things:
-# policy (P), a probability distribution over all legal moves
-# value (V), a scalar in [-1, 1] representing likelihood of winning
-# also, we'll add some dirichlet noise (mw*), to prevent same moves
-# implements ChaturangaPlayer with get_move
-# built in dummy fallback model currently
-
 import math
 import random
 from typing import Dict, List, Tuple, Optional
 import numpy as np
 
-# Universal BasePlayer contract
-class BasePlayer:
-    def get_move(self, board: np.ndarray, player: int) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        raise NotImplementedError
+# Import universal player contract and engine rules
+from chaturanga import BasePlayer, get_all_legal_moves, get_game_outcome, make_move
 
-# Import engine rules
-from chaturanga import get_all_legal_moves, get_game_outcome, make_move
-
-# --- Fallback Encoder & Dummy Model (so you can test before Person 1 finishes) ---
+# Fallback default encoder utilities if neural.encoder is not present
 def default_move_to_action(move: Tuple[Tuple[int, int], Tuple[int, int]]) -> int:
     (sr, sc), (er, ec) = move
     return ((sr * 8 + sc) * 64) + (er * 8 + ec)
@@ -30,11 +17,9 @@ def default_action_to_move(action_idx: int) -> Tuple[Tuple[int, int], Tuple[int,
     return (start_sq // 8, start_sq % 8), (end_sq // 8, end_sq % 8)
 
 def default_board_to_tensor(board: np.ndarray, player: int):
-    # Dummy representation: returns a 13x8x8 array if PyTorch is not yet imported
     try:
         import torch
         tensor = torch.zeros((13, 8, 8), dtype=torch.float32)
-        # Channels 0-5: White pieces, 6-11: Black pieces
         for r in range(8):
             for c in range(8):
                 val = board[r, c]
@@ -44,9 +29,9 @@ def default_board_to_tensor(board: np.ndarray, player: int):
                     tensor[abs(val) + 5, r, c] = 1.0
         if player == 1:
             tensor[12, :, :] = 1.0
-        return tensor.unsqueeze(0)  # Shape (1, 13, 8, 8)
+        return tensor  # Shape (13, 8, 8)
     except ImportError:
-        return np.zeros((1, 13, 8, 8), dtype=np.float32)
+        return np.zeros((13, 8, 8), dtype=np.float32)
 
 try:
     import torch
@@ -56,31 +41,50 @@ except ImportError:
     _ModuleBase = object
 
 class DummyNeuralNet(_ModuleBase):
-    """A minimal stub matching Person 1's model interface."""
+    """Fallback stub matching ChaturangaNet interface."""
     def __init__(self):
         super().__init__()
         try:
             import torch
             import torch.nn as nn
-            self.conv = nn.Conv2d(13, 8, kernel_size=3, padding=1)
-            self.pol = nn.Linear(8 * 8 * 8, 4096)
-            self.val = nn.Linear(8 * 8 * 8, 1)
+            self.conv = nn.Conv2d(13, 16, kernel_size=3, padding=1)
+            self.pol = nn.Linear(16 * 8 * 8, 4096)
+            self.val = nn.Linear(16 * 8 * 8, 1)
         except ImportError:
             pass
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         try:
             import torch
             if not isinstance(x, torch.Tensor):
                 x = torch.tensor(x, dtype=torch.float32)
+            if x.ndim == 3:
+                x = x.unsqueeze(0)
             h = torch.relu(self.conv(x)).flatten(1)
-            return self.pol(h), torch.tanh(self.val(h))
+            p = self.pol(h)
+            if mask is not None:
+                p = p.masked_fill(~mask, -1e9)
+            log_p = torch.log_softmax(p, dim=1)
+            v = torch.tanh(self.val(h))
+            return log_p, v
         except Exception:
             return np.zeros((1, 4096)), np.zeros((1, 1))
 
-    def __call__(self, tensor):
-        return self.forward(tensor)
+    def __call__(self, tensor, mask=None):
+        return self.forward(tensor, mask=mask)
 
+
+# Top-level encoder & model resolution
+try:
+    from neural.encoder import board_to_tensor, move_to_action
+except ImportError:
+    board_to_tensor = default_board_to_tensor
+    move_to_action = default_move_to_action
+
+try:
+    from neural.model import ChaturangaNet
+except ImportError:
+    ChaturangaNet = DummyNeuralNet
 
 
 Move = Tuple[Tuple[int, int], Tuple[int, int]]
@@ -94,10 +98,10 @@ class MCTSNode:
         self.children: Dict[Move, 'MCTSNode'] = {}
         self.current_player = current_player
 
-        self.N: int = 0          # Visit count
-        self.W: float = 0.0      # Total accumulated value
-        self.Q: float = 0.0      # Mean value (W / N)
-        self.P: float = prior_prob # Prior probability from policy head
+        self.N: int = 0            # Visit count
+        self.W: float = 0.0        # Total accumulated value from child perspective
+        self.Q: float = 0.0        # Mean action value (W / N)
+        self.P: float = prior_prob   # Prior probability from policy head
 
     def is_expanded(self) -> bool:
         return len(self.children) > 0
@@ -114,8 +118,10 @@ class MCTSNode:
 
     def get_puct_value(self, c_puct: float = 1.25) -> float:
         parent_visits = self.parent.N if self.parent else 1
-        u = c_puct * self.P * (math.sqrt(parent_visits) / (1 + self.N))
-        return self.Q + u
+        exploration_term = c_puct * self.P * (math.sqrt(parent_visits) / (1 + self.N))
+        # Critical fix: self.Q is stored from the child's perspective (opponent of parent).
+        # For the parent choosing this action, the expected value is -self.Q.
+        return -self.Q + exploration_term
 
     def update(self, value: float) -> None:
         self.N += 1
@@ -126,7 +132,13 @@ class MCTSNode:
 class NeuralMCTS:
     """MCTS driven by a dual-headed policy/value neural network."""
     def __init__(self, model=None, c_puct: float = 1.25, num_simulations: int = 40):
-        self.model = model if model is not None else DummyNeuralNet()
+        if model is not None:
+            self.model = model
+        else:
+            try:
+                self.model = ChaturangaNet()
+            except Exception:
+                self.model = DummyNeuralNet()
         self.c_puct = c_puct
         self.num_simulations = num_simulations
 
@@ -150,7 +162,7 @@ class NeuralMCTS:
 
         root_node.expand(action_probs)
 
-        # Run simulations
+        # Run MCTS simulations
         for _ in range(self.num_simulations):
             node = root_node
             board = initial_board.copy()
@@ -167,20 +179,21 @@ class NeuralMCTS:
                 search_path.append(node)
 
             # 2. Evaluation & Expansion
-            outcome = get_game_outcome(board, node.current_player)
-            if outcome is not None:
-                # Terminal leaf: outcome is +1 (win), -1 (loss), or 0 (draw)
-                value = float(outcome)
-            else:
-                legal = get_all_legal_moves(board, node.current_player)
-                if not legal:
-                    value = 0.0
-                else:
-                    action_probs, leaf_value = self._evaluate(board, node.current_player, legal)
-                    node.expand(action_probs)
-                    value = leaf_value
+            # Avoid double move generation: pass precomputed legal moves to get_game_outcome
+            legal = get_all_legal_moves(board, node.current_player)
+            outcome = get_game_outcome(board, node.current_player, legal_moves=legal)
 
-            # 3. Backpropagation (flipping value for alternating turns)
+            if outcome is not None:
+                # Terminal leaf: outcome is +1 (win), -1 (loss), or 0 (draw) for node.current_player
+                value = float(outcome)
+            elif not legal:
+                value = 0.0
+            else:
+                action_probs, leaf_value = self._evaluate(board, node.current_player, legal)
+                node.expand(action_probs)
+                value = leaf_value
+
+            # 3. Backpropagation (flipping value for alternating zero-sum turns)
             leaf_player = node.current_player
             for n in reversed(search_path):
                 n_value = value if n.current_player == leaf_player else -value
@@ -190,30 +203,35 @@ class NeuralMCTS:
 
     def _evaluate(self, board: np.ndarray, player: int, legal_moves: List[Move]) -> Tuple[Dict[Move, float], float]:
         """Queries the network for legal move probabilities and position value."""
-        try:
-            import torch
-            from neural.encoder import board_to_tensor, move_to_action
-        except ImportError:
-            board_to_tensor = default_board_to_tensor
-            move_to_action = default_move_to_action
-
-        # Convert board to tensor
         inp_tensor = board_to_tensor(board, player)
 
         try:
             import torch
+            if not isinstance(inp_tensor, torch.Tensor):
+                inp_tensor = torch.tensor(inp_tensor, dtype=torch.float32)
+            if inp_tensor.ndim == 3:
+                inp_tensor = inp_tensor.unsqueeze(0)  # Shape (1, 13, 8, 8)
+
+            # Ensure model is in eval mode during search to prevent BatchNorm errors
+            if hasattr(self.model, "eval"):
+                self.model.eval()
+
+            device = next(self.model.parameters()).device if hasattr(self.model, "parameters") else torch.device("cpu")
+            inp_tensor = inp_tensor.to(device)
+
             with torch.no_grad():
-                policy_logits, value_tensor = self.model(inp_tensor)
+                out = self.model(inp_tensor)
+                policy_logits, value_tensor = out[0], out[1]
                 policy_np = policy_logits.squeeze(0).cpu().numpy()
                 val = float(value_tensor.item())
-        except Exception:
+        except ImportError:
             policy_np = np.zeros(4096, dtype=np.float32)
             val = 0.0
 
         # Mask and softmax over strictly legal moves
         action_indices = [move_to_action(m) for m in legal_moves]
         sub_logits = np.array([policy_np[idx] for idx in action_indices], dtype=np.float64)
-        
+
         # Numerically stable softmax
         exp_logits = np.exp(sub_logits - np.max(sub_logits))
         sum_exp = np.sum(exp_logits)
@@ -230,12 +248,14 @@ class NeuralMCTS:
         moves = list(root_node.children.keys())
         visits = np.array([root_node.children[m].N for m in moves], dtype=np.float64)
 
-        if temperature == 0.0:
-            # Deterministic best move
-            best_idx = np.argmax(visits)
+        # Low temperature: deterministic argmax to prevent float overflow
+        if temperature < 0.05:
+            best_idx = int(np.argmax(visits))
             return {moves[best_idx]: 1.0}
 
-        visits_temp = visits ** (1.0 / max(temperature, 1e-4))
+        # Prevent overflow by normalizing with max visits
+        visits_norm = visits / np.max(visits)
+        visits_temp = visits_norm ** (1.0 / max(temperature, 1e-4))
         sum_visits = np.sum(visits_temp)
         probs = visits_temp / (sum_visits if sum_visits > 0 else 1.0)
 

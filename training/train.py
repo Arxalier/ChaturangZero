@@ -1,8 +1,3 @@
-# loss function, optimizer, checkpointing
-# converts batches from ReplayBuffer into PyTorch tensors
-# uses multi-task loss, which is used by ChaturangZero as well
-# adam optimizer is used.
-
 import os
 import torch
 import torch.nn as nn
@@ -27,14 +22,19 @@ class ChaturangZeroLoss(nn.Module):
         super().__init__()
         self.mse = nn.MSELoss()
 
-    def forward(self, pred_logits, pred_values, target_pis, target_zs):
+    def forward(self, pred_policy, pred_values, target_pis, target_zs):
         # Value loss: (z - v)^2
         val_loss = self.mse(pred_values.squeeze(-1), target_zs)
 
-        # Policy loss: - sum(pi * log_softmax(logits))
-        log_probs = torch.log_softmax(pred_logits, dim=1)
-        pol_loss = -torch.mean(torch.sum(target_pis * log_probs, dim=1))
+        # Policy loss:
+        # If output from model is raw logits, compute log_softmax.
+        # If already log_softmax (<= 0), use directly to prevent double log_softmax.
+        if pred_policy.max() > 0.0:
+            log_probs = torch.log_softmax(pred_policy, dim=1)
+        else:
+            log_probs = pred_policy
 
+        pol_loss = -torch.mean(torch.sum(target_pis * log_probs, dim=1))
         return val_loss + pol_loss, val_loss.item(), pol_loss.item()
 
 
@@ -49,17 +49,23 @@ def train_step(model, optimizer, criterion, batch, device):
     # Unpack batch
     boards, players, pis, zs = zip(*batch)
 
-    # Convert boards to (B, 13, 8, 8) tensor
-    tensor_list = [board_to_tensor(b, p).squeeze(0) if torch.is_tensor(board_to_tensor(b, p))
-                   else torch.tensor(board_to_tensor(b, p)).squeeze(0)
-                   for b, p in zip(boards, players)]
+    # Convert boards to (B, 13, 8, 8) tensor without redundant calls
+    tensor_list = []
+    for b, p in zip(boards, players):
+        t = board_to_tensor(b, p)
+        if not torch.is_tensor(t):
+            t = torch.tensor(t, dtype=torch.float32)
+        if t.ndim == 4:
+            t = t.squeeze(0)
+        tensor_list.append(t)
+
     batch_x = torch.stack(tensor_list).to(device).float()
     batch_pi = torch.tensor(np.array(pis), dtype=torch.float32, device=device)
     batch_z = torch.tensor(np.array(zs), dtype=torch.float32, device=device)
 
     optimizer.zero_grad()
-    pred_logits, pred_v = model(batch_x)
-    total_loss, v_loss, p_loss = criterion(pred_logits, pred_v, batch_pi, batch_z)
+    pred_policy, pred_v = model(batch_x)
+    total_loss, v_loss, p_loss = criterion(pred_policy, pred_v, batch_pi, batch_z)
 
     total_loss.backward()
     optimizer.step()
@@ -93,7 +99,8 @@ def run_training(
     for iteration in range(1, num_iterations + 1):
         print(f"\n--- Iteration {iteration}/{num_iterations} ---")
 
-        # 1. Self-Play Phase
+        # 1. Self-Play Phase (ensure model is in eval mode during MCTS)
+        model.eval()
         agent = SelfPlayAgent(model=model, num_simulations=sims_per_move)
         for g in range(games_per_iter):
             game_samples = agent.play_game()
@@ -102,10 +109,11 @@ def run_training(
 
         # 2. Network Optimization Phase
         if len(buffer) >= batch_size:
-            for epoch in range(epochs_per_iter):
+            train_steps = max(epochs_per_iter, 5)
+            for step in range(train_steps):
                 batch = buffer.sample_batch(batch_size)
                 tot_loss, v_loss, p_loss = train_step(model, optimizer, criterion, batch, device)
-                print(f"Epoch {epoch + 1}/{epochs_per_iter} - Loss: {tot_loss:.4f} (Val: {v_loss:.4f}, Pol: {p_loss:.4f})")
+                print(f"Step {step + 1}/{train_steps} - Loss: {tot_loss:.4f} (Val: {v_loss:.4f}, Pol: {p_loss:.4f})")
 
         # Save mid-way checkpoint
         if iteration == num_iterations // 2:

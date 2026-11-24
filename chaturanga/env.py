@@ -57,6 +57,13 @@ class ChaturangaEnv:
         self._cached_outcome = None
         return self.board
 
+    def set_state(self, board: np.ndarray, player: int) -> None:
+        """Sets the board and current player, clearing any cached state."""
+        self.board = board.copy()
+        self.current_player = player
+        self._cached_legal_moves = None
+        self._cached_outcome = None
+
     def get_legal_moves(self) -> List[Move]:
         """Returns all strictly legal moves for the current player."""
         if self._cached_legal_moves is None:

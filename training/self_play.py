@@ -1,9 +1,3 @@
-# plays full games where the nn plays against itself
-# stores current board state and turn, along with the visit distribution
-# (action space is 4096)
-# game ends with outcome {+1, -1, 0}
-# ReplayBuffer to store transitions for mini-batch gradient updates
-
 import random
 from typing import List, Tuple, Dict
 import numpy as np
@@ -47,13 +41,24 @@ class SelfPlayAgent:
         self.max_turns = max_turns            # Prevents infinite repetition cycles
 
     def play_game(self) -> List[TrainingSample]:
+        # Ensure model is in eval mode during self-play
+        if hasattr(self.mcts.model, "eval"):
+            self.mcts.model.eval()
+
         env = ChaturangaEnv()
         game_history = []  # Stores (board, current_player, pi_vector_4096)
+        position_counts: Dict[bytes, int] = {}
         turn_count = 0
 
         while turn_count < self.max_turns:
             board = env.board.copy()
             player = env.current_player
+
+            # Check 3-fold repetition draw
+            pos_key = board.tobytes() + bytes([1 if player == 1 else 0])
+            position_counts[pos_key] = position_counts.get(pos_key, 0) + 1
+            if position_counts[pos_key] >= 3:
+                break
 
             outcome = get_game_outcome(board, player)
             if outcome is not None:
@@ -88,7 +93,7 @@ class SelfPlayAgent:
         # Determine final winner
         final_outcome = get_game_outcome(env.board, env.current_player)
         if final_outcome is None:
-            # Reached max turns without terminal state: treat as draw
+            # Reached max turns or 3-fold repetition: treat as draw
             winner = 0
         else:
             # outcome is from the perspective of current_player
@@ -101,11 +106,6 @@ class SelfPlayAgent:
             samples.append((board_snap, step_player, pi_vec, z))
 
         return samples
-
-
-# Alias for backward compatibility
-SelfPlayWorker = SelfPlayAgent
-
 
 
 # Alias for backward compatibility

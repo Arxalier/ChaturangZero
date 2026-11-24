@@ -48,6 +48,31 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 SESSION = Session()
 LOCK = threading.Lock()
 
+# Cached AI Model for fast UI responses
+CACHED_AI_MODEL = None
+CACHED_CKPT_MTIME = 0
+
+def get_ai_model():
+    global CACHED_AI_MODEL, CACHED_CKPT_MTIME
+    ckpt_path = os.path.join(REPO_ROOT, "checkpoints", "gen_final.pt")
+    if os.path.exists(ckpt_path):
+        mtime = os.path.getmtime(ckpt_path)
+        if CACHED_AI_MODEL is None or mtime != CACHED_CKPT_MTIME:
+            try:
+                import torch
+                try:
+                    from neural.model import ChaturangaNet
+                except ImportError:
+                    from training.mcts_agent import DummyNeuralNet as ChaturangaNet
+                model = ChaturangaNet()
+                model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+                model.eval()
+                CACHED_AI_MODEL = model
+                CACHED_CKPT_MTIME = mtime
+            except Exception as e:
+                print(f"Warning loading checkpoint: {e}")
+    return CACHED_AI_MODEL
+
 # Honest status board for the "engine components" panel in the UI.
 COMPONENTS = [
     {"module": "chaturanga/pieces.py", "status": "done",
@@ -233,21 +258,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 elif route in ("/api/ai_move", "/api/chaturang_move"):
                     from training.mcts_agent import ChaturangPlayer
-                    import os
-                    model = None
-                    ckpt_path = os.path.join(REPO_ROOT, "checkpoints", "gen_final.pt")
-                    if os.path.exists(ckpt_path):
-                        try:
-                            import torch
-                            try:
-                                from neural.model import ChaturangaNet
-                            except ImportError:
-                                from training.mcts_agent import DummyNeuralNet as ChaturangaNet
-                            model = ChaturangaNet()
-                            model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
-                            model.eval()
-                        except Exception as e:
-                            print(f"Warning loading checkpoint: {e}")
+                    model = get_ai_model()
                     player = ChaturangPlayer(model=model, num_sims=20, temperature=0.1)
                     move = player.get_move(SESSION.env.board, SESSION.env.current_player)
                     start, end = move
