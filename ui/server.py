@@ -51,6 +51,7 @@ LOCK = threading.Lock()
 # Cached AI Model for fast UI responses
 CACHED_AI_MODEL = None
 CACHED_CKPT_MTIME = 0
+AI_NUM_SIMS = 40
 
 def get_ai_model():
     global CACHED_AI_MODEL, CACHED_CKPT_MTIME
@@ -258,7 +259,8 @@ class Handler(BaseHTTPRequestHandler):
                 elif route in ("/api/ai_move", "/api/chaturang_move"):
                     from training.mcts_agent import ChaturangPlayer
                     model = get_ai_model()
-                    player = ChaturangPlayer(model=model, num_sims=40, temperature=0.1)
+                    sims = int(body.get("sims", AI_NUM_SIMS)) if isinstance(body, dict) else AI_NUM_SIMS
+                    player = ChaturangPlayer(model=model, num_sims=sims, temperature=0.0)
                     pos_counts = {}
                     for b, p in SESSION.undo_stack:
                         k = b.tobytes() + bytes([1 if p == 1 else 0])
@@ -285,7 +287,11 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--sims", type=int, default=40, help="MCTS simulations per AI move (default: 40)")
     args = parser.parse_args()
+
+    global AI_NUM_SIMS
+    AI_NUM_SIMS = args.sims
 
     port = args.port
     for attempt in range(10):  # step forward if the port is busy
@@ -303,6 +309,7 @@ def main():
     print("=" * 62)
     print(f"  Serving  : {url}")
     print(f"  Engine   : chaturanga package, numpy {np.__version__}")
+    print(f"  AI MCTS  : {AI_NUM_SIMS} simulations per move (temperature=0.0)")
     print(f"  Python   : {sys.version.split()[0]} ({sys.executable})")
     print("  Stop with Ctrl+C")
     print("=" * 62)
