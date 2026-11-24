@@ -1,0 +1,9 @@
+{
+  "ckpt_dir": "checkpoints",
+  "games_per_pair": 20,
+  "max_plies": 300,
+  "extra_ckpt": [],
+  "quick": false,
+  "minutes": 72.5,
+  "note": "figures redrawn afterwards with --skip tournament progression tiers ablations"
+}

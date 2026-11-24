@@ -1,0 +1,82 @@
+{
+  "mode": "measure",
+  "checkpoint": "checkpoints/local_run/gen_final.pt",
+  "anchor": "Random",
+  "anchor_elo": 0.0,
+  "tiers": [
+    {
+      "tier": "Master",
+      "target": 1800,
+      "elo": 31.089239529628735,
+      "ci_low": 3.0540696933873206,
+      "ci_high": 59.199624281765885,
+      "gap": -1768.9107604703713,
+      "within_ci": false,
+      "settings": "sims=80, tau=0.05, blunder=0.0"
+    },
+    {
+      "tier": "Intermediate",
+      "target": 1300,
+      "elo": 43.325273695615586,
+      "ci_low": 18.308150920821557,
+      "ci_high": 67.64046959704065,
+      "gap": -1256.6747263043844,
+      "within_ci": false,
+      "settings": "sims=15, tau=0.6, blunder=0.0"
+    },
+    {
+      "tier": "Novice",
+      "target": 700,
+      "elo": 3.1494183303018843,
+      "ci_low": -21.48895390071408,
+      "ci_high": 28.50996780211749,
+      "gap": -696.8505816696982,
+      "within_ci": false,
+      "settings": "sims=0, tau=1.0, blunder=0.15"
+    }
+  ],
+  "elo": [
+    {
+      "player": "Minimax-d2",
+      "elo": 270.1838267409197,
+      "ci_low": 225.31152213814133,
+      "ci_high": 319.618865877543,
+      "games": 100
+    },
+    {
+      "player": "Greedy-1ply",
+      "elo": 217.27208326977274,
+      "ci_low": 173.25109925642244,
+      "ci_high": 260.0964547777441,
+      "games": 100
+    },
+    {
+      "player": "AZ-Intermediate",
+      "elo": 43.325273695615586,
+      "ci_low": 18.308150920821557,
+      "ci_high": 67.64046959704065,
+      "games": 100
+    },
+    {
+      "player": "AZ-Master",
+      "elo": 31.089239529628735,
+      "ci_low": 3.0540696933873206,
+      "ci_high": 59.199624281765885,
+      "games": 100
+    },
+    {
+      "player": "AZ-Novice",
+      "elo": 3.1494183303018843,
+      "ci_low": -21.48895390071408,
+      "ci_high": 28.50996780211749,
+      "games": 100
+    },
+    {
+      "player": "Random",
+      "elo": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "games": 100
+    }
+  ]
+}

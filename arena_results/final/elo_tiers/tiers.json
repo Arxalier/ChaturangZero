@@ -1,0 +1,82 @@
+{
+  "mode": "measure",
+  "checkpoint": "checkpoints/gen_final.pt",
+  "anchor": "Random",
+  "anchor_elo": 0.0,
+  "tiers": [
+    {
+      "tier": "Master",
+      "target": 1800,
+      "elo": 632.4908389802073,
+      "ci_low": 527.7452480450632,
+      "ci_high": 753.5263917257225,
+      "gap": -1167.5091610197928,
+      "within_ci": false,
+      "settings": "sims=80, tau=0.05, blunder=0.0"
+    },
+    {
+      "tier": "Intermediate",
+      "target": 1300,
+      "elo": 285.29333935623913,
+      "ci_low": 215.0761683488767,
+      "ci_high": 370.7934867860097,
+      "gap": -1014.7066606437609,
+      "within_ci": false,
+      "settings": "sims=15, tau=0.6, blunder=0.0"
+    },
+    {
+      "tier": "Novice",
+      "target": 700,
+      "elo": 167.29361621904923,
+      "ci_low": 101.34254518800805,
+      "ci_high": 244.1328864570939,
+      "gap": -532.7063837809508,
+      "within_ci": false,
+      "settings": "sims=0, tau=1.0, blunder=0.15"
+    }
+  ],
+  "elo": [
+    {
+      "player": "Minimax-d2",
+      "elo": 1026.4715926681633,
+      "ci_low": 926.3649613721947,
+      "ci_high": 1158.3777122796002,
+      "games": 100
+    },
+    {
+      "player": "AZ-Master",
+      "elo": 632.4908389802073,
+      "ci_low": 527.7452480450632,
+      "ci_high": 753.5263917257225,
+      "games": 100
+    },
+    {
+      "player": "Greedy-1ply",
+      "elo": 585.1127413060359,
+      "ci_low": 509.6597750632993,
+      "ci_high": 679.3909857602879,
+      "games": 100
+    },
+    {
+      "player": "AZ-Intermediate",
+      "elo": 285.29333935623913,
+      "ci_low": 215.0761683488767,
+      "ci_high": 370.7934867860097,
+      "games": 100
+    },
+    {
+      "player": "AZ-Novice",
+      "elo": 167.29361621904923,
+      "ci_low": 101.34254518800805,
+      "ci_high": 244.1328864570939,
+      "games": 100
+    },
+    {
+      "player": "Random",
+      "elo": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "games": 100
+    }
+  ]
+}

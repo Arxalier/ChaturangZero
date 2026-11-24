@@ -1,0 +1,7 @@
+,Random,Greedy-1ply,Minimax-d2,AZ-Master,AZ-Intermediate,AZ-Novice
+Random,,87.6,89.2,116.3,120.0,120.0
+Greedy-1ply,87.6,,102.8,88.8,98.2,85.2
+Minimax-d2,89.2,102.8,,101.2,111.2,88.2
+AZ-Master,116.3,88.8,101.2,,35.8,53.2
+AZ-Intermediate,120.0,98.2,111.2,35.8,,56.0
+AZ-Novice,120.0,85.2,88.2,53.2,56.0,

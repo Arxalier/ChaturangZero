@@ -1,0 +1,432 @@
+{
+  "config": {
+    "format": "round-robin",
+    "games_per_pair": 20,
+    "max_plies": 120,
+    "opening_plies": 2,
+    "seed": 0
+  },
+  "players": [
+    {
+      "label": "Random",
+      "spec": "random"
+    },
+    {
+      "label": "Greedy-1ply",
+      "spec": "greedy"
+    },
+    {
+      "label": "Minimax-d2",
+      "spec": "minimax:depth=2"
+    },
+    {
+      "label": "gen_0",
+      "spec": "gen_0=az:ckpt=checkpoints/local_run/gen_0.pt,sims=25,temp=0.05"
+    },
+    {
+      "label": "gen_mid",
+      "spec": "gen_mid=az:ckpt=checkpoints/local_run/gen_mid.pt,sims=25,temp=0.05"
+    },
+    {
+      "label": "gen_final",
+      "spec": "gen_final=az:ckpt=checkpoints/local_run/gen_final.pt,sims=25,temp=0.05"
+    }
+  ],
+  "elo": [
+    {
+      "player": "Minimax-d2",
+      "elo": 244.29130653002136,
+      "ci_low": 198.6097458002896,
+      "ci_high": 288.6644420489577,
+      "games": 100
+    },
+    {
+      "player": "Greedy-1ply",
+      "elo": 210.4429700067193,
+      "ci_low": 171.34658632327907,
+      "ci_high": 254.68088025906837,
+      "games": 100
+    },
+    {
+      "player": "gen_final",
+      "elo": 39.730483512991654,
+      "ci_low": 7.4409433778398935,
+      "ci_high": 71.71201526796108,
+      "games": 100
+    },
+    {
+      "player": "gen_0",
+      "elo": 36.7180289585446,
+      "ci_low": 0.0,
+      "ci_high": 69.66562041031848,
+      "games": 100
+    },
+    {
+      "player": "gen_mid",
+      "elo": 21.561012409116245,
+      "ci_low": -6.0679551709436526,
+      "ci_high": 49.62774076704038,
+      "games": 100
+    },
+    {
+      "player": "Random",
+      "elo": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "games": 100
+    }
+  ],
+  "elo_anchor": {
+    "player": "Random",
+    "elo": 0.0
+  },
+  "standings": [
+    {
+      "player": "Random",
+      "games": 100,
+      "wins": 3,
+      "losses": 33,
+      "draws": 64,
+      "score": 0.35,
+      "avg_plies": 105.21
+    },
+    {
+      "player": "Greedy-1ply",
+      "games": 100,
+      "wins": 56,
+      "losses": 17,
+      "draws": 27,
+      "score": 0.695,
+      "avg_plies": 94.24
+    },
+    {
+      "player": "Minimax-d2",
+      "games": 100,
+      "wins": 50,
+      "losses": 1,
+      "draws": 49,
+      "score": 0.745,
+      "avg_plies": 100.57
+    },
+    {
+      "player": "gen_0",
+      "games": 100,
+      "wins": 7,
+      "losses": 25,
+      "draws": 68,
+      "score": 0.41,
+      "avg_plies": 103.37
+    },
+    {
+      "player": "gen_mid",
+      "games": 100,
+      "wins": 0,
+      "losses": 23,
+      "draws": 77,
+      "score": 0.385,
+      "avg_plies": 89.18
+    },
+    {
+      "player": "gen_final",
+      "games": 100,
+      "wins": 0,
+      "losses": 17,
+      "draws": 83,
+      "score": 0.415,
+      "avg_plies": 92.01
+    }
+  ],
+  "wins": [
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      2.0
+    ],
+    [
+      15.0,
+      0.0,
+      0.0,
+      16.0,
+      15.0,
+      10.0
+    ],
+    [
+      16.0,
+      16.0,
+      0.0,
+      8.0,
+      6.0,
+      4.0
+    ],
+    [
+      2.0,
+      1.0,
+      1.0,
+      0.0,
+      2.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "draws": [
+    [
+      0.0,
+      5.0,
+      4.0,
+      17.0,
+      20.0,
+      18.0
+    ],
+    [
+      5.0,
+      0.0,
+      4.0,
+      3.0,
+      5.0,
+      10.0
+    ],
+    [
+      4.0,
+      4.0,
+      0.0,
+      11.0,
+      14.0,
+      16.0
+    ],
+    [
+      17.0,
+      3.0,
+      11.0,
+      0.0,
+      18.0,
+      19.0
+    ],
+    [
+      20.0,
+      5.0,
+      14.0,
+      18.0,
+      0.0,
+      20.0
+    ],
+    [
+      18.0,
+      10.0,
+      16.0,
+      19.0,
+      20.0,
+      0.0
+    ]
+  ],
+  "count": [
+    [
+      0.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      0.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      0.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      0.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      0.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      0.0
+    ]
+  ],
+  "score_rate": [
+    [
+      null,
+      0.125,
+      0.1,
+      0.475,
+      0.5,
+      0.55
+    ],
+    [
+      0.875,
+      null,
+      0.1,
+      0.875,
+      0.875,
+      0.75
+    ],
+    [
+      0.9,
+      0.9,
+      null,
+      0.675,
+      0.65,
+      0.6
+    ],
+    [
+      0.525,
+      0.125,
+      0.325,
+      null,
+      0.55,
+      0.525
+    ],
+    [
+      0.5,
+      0.125,
+      0.35,
+      0.45,
+      null,
+      0.5
+    ],
+    [
+      0.45,
+      0.25,
+      0.4,
+      0.475,
+      0.5,
+      null
+    ]
+  ],
+  "avg_length": [
+    [
+      null,
+      87.6,
+      89.15,
+      115.65,
+      116.0,
+      117.65
+    ],
+    [
+      87.6,
+      null,
+      102.75,
+      89.85,
+      89.5,
+      101.5
+    ],
+    [
+      89.15,
+      102.75,
+      null,
+      100.6,
+      106.4,
+      103.95
+    ],
+    [
+      115.65,
+      89.85,
+      100.6,
+      null,
+      103.9,
+      106.85
+    ],
+    [
+      116.0,
+      89.5,
+      106.4,
+      103.9,
+      null,
+      30.1
+    ],
+    [
+      117.65,
+      101.5,
+      103.95,
+      106.85,
+      30.1,
+      null
+    ]
+  ],
+  "end_reasons": {
+    "Greedy-1ply": {
+      "won_bare_king": 48,
+      "draw_max_plies": 27,
+      "lost_bare_king": 14,
+      "lost_checkmate": 3,
+      "won_checkmate": 8
+    },
+    "Random": {
+      "lost_bare_king": 26,
+      "draw_max_plies": 63,
+      "lost_checkmate": 7,
+      "won_checkmate": 3,
+      "draw_repetition": 1
+    },
+    "Minimax-d2": {
+      "won_checkmate": 17,
+      "draw_max_plies": 42,
+      "won_bare_king": 33,
+      "lost_checkmate": 1,
+      "draw_repetition": 7
+    },
+    "gen_0": {
+      "draw_max_plies": 59,
+      "won_checkmate": 7,
+      "lost_checkmate": 6,
+      "lost_bare_king": 19,
+      "draw_repetition": 9
+    },
+    "gen_mid": {
+      "draw_max_plies": 51,
+      "draw_repetition": 26,
+      "lost_bare_king": 16,
+      "lost_checkmate": 7
+    },
+    "gen_final": {
+      "draw_max_plies": 54,
+      "lost_checkmate": 11,
+      "lost_bare_king": 6,
+      "draw_repetition": 29
+    }
+  },
+  "num_games": 300
+}

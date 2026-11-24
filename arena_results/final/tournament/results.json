@@ -1,0 +1,433 @@
+{
+  "config": {
+    "format": "round-robin",
+    "games_per_pair": 20,
+    "max_plies": 300,
+    "opening_plies": 2,
+    "seed": 0
+  },
+  "players": [
+    {
+      "label": "Random",
+      "spec": "random"
+    },
+    {
+      "label": "Greedy-1ply",
+      "spec": "greedy"
+    },
+    {
+      "label": "Minimax-d2",
+      "spec": "minimax:depth=2"
+    },
+    {
+      "label": "AZ-Master",
+      "spec": "AZ-Master=az-master:ckpt=checkpoints/gen_final.pt"
+    },
+    {
+      "label": "AZ-Intermediate",
+      "spec": "AZ-Intermediate=az-intermediate:ckpt=checkpoints/gen_final.pt"
+    },
+    {
+      "label": "AZ-Novice",
+      "spec": "AZ-Novice=az-novice:ckpt=checkpoints/gen_final.pt"
+    }
+  ],
+  "elo": [
+    {
+      "player": "Minimax-d2",
+      "elo": 1026.4715926681633,
+      "ci_low": 927.8095467526697,
+      "ci_high": 1161.2704503922403,
+      "games": 100
+    },
+    {
+      "player": "AZ-Master",
+      "elo": 632.4908389802073,
+      "ci_low": 533.2555478621163,
+      "ci_high": 768.8518042127934,
+      "games": 100
+    },
+    {
+      "player": "Greedy-1ply",
+      "elo": 585.1127413060359,
+      "ci_low": 501.82980266843464,
+      "ci_high": 687.0926743273949,
+      "games": 100
+    },
+    {
+      "player": "AZ-Intermediate",
+      "elo": 285.29333935623913,
+      "ci_low": 215.04552632574323,
+      "ci_high": 379.0335343985897,
+      "games": 100
+    },
+    {
+      "player": "AZ-Novice",
+      "elo": 167.29361621904923,
+      "ci_low": 96.06111163551293,
+      "ci_high": 245.84376967711833,
+      "games": 100
+    },
+    {
+      "player": "Random",
+      "elo": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "games": 100
+    }
+  ],
+  "elo_anchor": {
+    "player": "Random",
+    "elo": 0.0
+  },
+  "standings": [
+    {
+      "player": "Random",
+      "games": 100,
+      "wins": 0,
+      "losses": 84,
+      "draws": 16,
+      "score": 0.08,
+      "avg_plies": 152.48
+    },
+    {
+      "player": "Greedy-1ply",
+      "games": 100,
+      "wins": 65,
+      "losses": 34,
+      "draws": 1,
+      "score": 0.655,
+      "avg_plies": 115.32
+    },
+    {
+      "player": "Minimax-d2",
+      "games": 100,
+      "wins": 97,
+      "losses": 0,
+      "draws": 3,
+      "score": 0.985,
+      "avg_plies": 109.58
+    },
+    {
+      "player": "AZ-Master",
+      "games": 100,
+      "wins": 64,
+      "losses": 24,
+      "draws": 12,
+      "score": 0.7,
+      "avg_plies": 154.87
+    },
+    {
+      "player": "AZ-Intermediate",
+      "games": 100,
+      "wins": 25,
+      "losses": 55,
+      "draws": 20,
+      "score": 0.35,
+      "avg_plies": 154.79
+    },
+    {
+      "player": "AZ-Novice",
+      "games": 100,
+      "wins": 14,
+      "losses": 68,
+      "draws": 18,
+      "score": 0.23,
+      "avg_plies": 164.54
+    }
+  ],
+  "wins": [
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      20.0,
+      0.0,
+      0.0,
+      6.0,
+      19.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      0.0,
+      18.0,
+      19.0,
+      20.0
+    ],
+    [
+      17.0,
+      14.0,
+      0.0,
+      0.0,
+      16.0,
+      17.0
+    ],
+    [
+      14.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      11.0
+    ],
+    [
+      13.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "draws": [
+    [
+      0.0,
+      0.0,
+      0.0,
+      3.0,
+      6.0,
+      7.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      2.0,
+      1.0,
+      0.0
+    ],
+    [
+      3.0,
+      0.0,
+      2.0,
+      0.0,
+      4.0,
+      3.0
+    ],
+    [
+      6.0,
+      1.0,
+      1.0,
+      4.0,
+      0.0,
+      8.0
+    ],
+    [
+      7.0,
+      0.0,
+      0.0,
+      3.0,
+      8.0,
+      0.0
+    ]
+  ],
+  "count": [
+    [
+      0.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      0.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      0.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      0.0,
+      20.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      0.0,
+      20.0
+    ],
+    [
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      0.0
+    ]
+  ],
+  "score_rate": [
+    [
+      null,
+      0.0,
+      0.0,
+      0.075,
+      0.15,
+      0.175
+    ],
+    [
+      1.0,
+      null,
+      0.0,
+      0.3,
+      0.975,
+      1.0
+    ],
+    [
+      1.0,
+      1.0,
+      null,
+      0.95,
+      0.975,
+      1.0
+    ],
+    [
+      0.925,
+      0.7,
+      0.05,
+      null,
+      0.9,
+      0.925
+    ],
+    [
+      0.85,
+      0.025,
+      0.025,
+      0.1,
+      null,
+      0.75
+    ],
+    [
+      0.825,
+      0.0,
+      0.0,
+      0.075,
+      0.25,
+      null
+    ]
+  ],
+  "avg_length": [
+    [
+      null,
+      93.3,
+      93.4,
+      157.75,
+      192.2,
+      225.75
+    ],
+    [
+      93.3,
+      null,
+      105.0,
+      148.0,
+      103.2,
+      127.1
+    ],
+    [
+      93.4,
+      105.0,
+      null,
+      127.4,
+      116.3,
+      105.8
+    ],
+    [
+      157.75,
+      148.0,
+      127.4,
+      null,
+      169.7,
+      171.5
+    ],
+    [
+      192.2,
+      103.2,
+      116.3,
+      169.7,
+      null,
+      192.55
+    ],
+    [
+      225.75,
+      127.1,
+      105.8,
+      171.5,
+      192.55,
+      null
+    ]
+  ],
+  "end_reasons": {
+    "Greedy-1ply": {
+      "won_bare_king": 60,
+      "won_checkmate": 5,
+      "lost_bare_king": 30,
+      "lost_checkmate": 4,
+      "draw_max_plies": 1
+    },
+    "Random": {
+      "lost_bare_king": 76,
+      "lost_checkmate": 8,
+      "draw_max_plies": 12,
+      "draw_repetition": 4
+    },
+    "Minimax-d2": {
+      "won_checkmate": 26,
+      "won_bare_king": 71,
+      "draw_repetition": 3
+    },
+    "AZ-Master": {
+      "won_bare_king": 60,
+      "draw_max_plies": 7,
+      "won_checkmate": 4,
+      "lost_bare_king": 17,
+      "draw_repetition": 5,
+      "lost_checkmate": 7
+    },
+    "AZ-Intermediate": {
+      "won_bare_king": 25,
+      "draw_repetition": 12,
+      "draw_max_plies": 8,
+      "lost_bare_king": 46,
+      "lost_checkmate": 9
+    },
+    "AZ-Novice": {
+      "draw_max_plies": 10,
+      "won_bare_king": 13,
+      "draw_repetition": 8,
+      "won_checkmate": 1,
+      "lost_bare_king": 60,
+      "lost_checkmate": 8
+    }
+  },
+  "num_games": 300
+}
