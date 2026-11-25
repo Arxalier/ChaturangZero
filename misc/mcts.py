@@ -1,3 +1,10 @@
+"""
+misc.mcts
+---------
+Early standalone PUCT Monte Carlo Tree Search prototype with random-uniform
+evaluator used before neural network integration.
+"""
+
 import math
 import os
 import sys

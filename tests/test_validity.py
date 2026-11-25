@@ -5,12 +5,22 @@ Automated test suite for random rollout fuzz testing and invariant validation.
 Compatible with both standard python unittest and pytest.
 """
 
+import os
+import sys
 import unittest
 import numpy as np
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 from chaturanga.pieces import WHITE, BLACK, KING, PAWN, MINISTER
 from chaturanga.board import create_starting_board
 from chaturanga.rules import perft
-from validity_test import run_fuzz_test_suite, run_random_game
+try:
+    from tests.validity_test import run_fuzz_test_suite, run_random_game
+except ImportError:
+    from validity_test import run_fuzz_test_suite, run_random_game
 
 
 class TestChaturangaValidity(unittest.TestCase):

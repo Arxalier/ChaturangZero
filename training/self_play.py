@@ -1,3 +1,10 @@
+"""
+training.self_play
+------------------
+Generates self-play training games (with optional curriculum board starts),
+collects (board, player, MCTS policy, value, mask) tuples, and manages ReplayBuffer.
+"""
+
 import random
 from typing import List, Tuple, Dict
 import numpy as np

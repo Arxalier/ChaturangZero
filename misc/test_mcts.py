@@ -1,3 +1,9 @@
+"""
+misc.test_mcts
+--------------
+Smoke test for the standalone prototype MCTS search loop (misc/mcts.py).
+"""
+
 import os
 import sys
 

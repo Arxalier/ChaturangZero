@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
-test_vs_random.py
------------------
-Runs a benchmark match of ChaturangZero (Neural MCTS) vs Random Bot.
-Alternates sides: odd games as White, even games as Black.
+misc.test_vs_random
+-------------------
+Runs configurable N-game benchmarks pitting ChaturangZero (Neural MCTS)
+against a uniform random opponent, alternating White and Black sides.
 """
 
+import os
 import sys
 import argparse
 import random
 import torch
 import numpy as np
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from chaturanga import (
     ChaturangaEnv, get_game_outcome,

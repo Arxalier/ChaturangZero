@@ -1,11 +1,21 @@
+"""
+training.train
+--------------
+AlphaZero training loop: masked multi-task policy/value loss, horizontal-flip
+data augmentation, live material-probe diagnostics, and checkpoint persistence.
+"""
+
 import argparse
 import json
 import os
 import random
+import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from chaturanga import ChaturangaEnv, create_starting_board, get_all_legal_moves
 from training.self_play import ReplayBuffer, SelfPlayAgent

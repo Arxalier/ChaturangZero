@@ -1,8 +1,17 @@
 """
-Heuristic analysis tool: Evaluates move generators to estimate mobility and board centrality.
+misc.discover_values
+--------------------
+Heuristic analysis tool: derives piece values (sublinear mobility ratios)
+and square centrality heatmaps directly from chaturanga.moves generators.
 """
 
+import os
+import sys
 import numpy as np
+
+# Ensure repository root is on sys.path when invoked as python3 misc/discover_values.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from chaturanga import (
     get_chariot_moves, get_horse_moves, get_elephant_moves, get_minister_moves,
     PAWN, ELEPHANT, MINISTER, HORSE, CHARIOT, KING, WHITE, PIECE_NAMES

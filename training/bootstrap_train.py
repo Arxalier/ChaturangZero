@@ -1,12 +1,22 @@
+"""
+training.bootstrap_train
+------------------------
+Generates curriculum games using calibrated 2-ply lookahead heuristic evaluations
+and fine-tunes ChaturangaNet to overcome pure self-play draw collapse.
+"""
+
 import argparse
 import json
 import os
 import random
+import sys
 import time
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from chaturanga import (
     ChaturangaEnv, create_starting_board, get_all_legal_moves,

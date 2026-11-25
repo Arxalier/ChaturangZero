@@ -55,3 +55,16 @@ wandb/
 # OS artifacts
 .DS_Store
 Thumbs.db
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+# Private notes & LLM transcripts
+concerns.txt
+llm_conversation/
+report/Project_Sub_Template/my_draft.md

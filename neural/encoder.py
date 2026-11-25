@@ -1,3 +1,10 @@
+"""
+neural.encoder
+--------------
+Translates 8x8 Chaturanga boards into (13, 8, 8) PyTorch tensors and flattens
+board moves into a 4,096-action index space with legal move masking.
+"""
+
 import numpy as np, torch
 from chaturanga import get_all_legal_moves
 

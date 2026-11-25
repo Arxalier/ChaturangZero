@@ -1,3 +1,10 @@
+"""
+training.mcts_agent
+-------------------
+PUCT Monte Carlo Tree Search (NeuralMCTS) guided by ChaturangaNet and wrapped
+as a configurable BasePlayer agent (ChaturangPlayer) with repetition awareness.
+"""
+
 import math
 import random
 from typing import Dict, List, Tuple, Optional, Set

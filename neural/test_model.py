@@ -1,4 +1,15 @@
+"""
+neural.test_model
+-----------------
+Smoke test verifying ChaturangaNet output shapes, backward gradients, tensor
+encoding planes, action round-trips, and legal move probability masking.
+"""
+
+import os
+import sys
 import torch
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from chaturanga import create_starting_board
 from neural.model import ChaturangaNet
 from neural.encoder import *

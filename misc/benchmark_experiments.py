@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """
-benchmark_experiments.py
-------------------------
-Runs a 10-game benchmark of ChaturangZero (Neural MCTS @ 200 sims) vs Random Bot,
-compares it against the former baseline (pre-bootstrap model @ shallow sims),
-and appends the comparative results directly to report.txt.
+misc.benchmark_experiments
+--------------------------
+Runs a 10-game benchmark of ChaturangZero (Neural MCTS @ 50/200 sims) vs. Random Bot,
+compares it against the pre-bootstrap baseline, and logs summaries to report.txt.
 """
 
+import os
 import sys
 import time
 import random
 import torch
 import numpy as np
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from chaturanga import (
     ChaturangaEnv, get_game_outcome,

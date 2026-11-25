@@ -1,5 +1,15 @@
+"""
+training.test_pipeline
+----------------------
+CPU end-to-end integration test verifying ChaturangPlayer move selection,
+Bare King tactical lookahead, self-play replay generation, and one optimizer step.
+"""
+
+import os
 import sys
 import numpy as np
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 def run_test():
     print("=" * 60)

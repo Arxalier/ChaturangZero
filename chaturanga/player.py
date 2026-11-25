@@ -1,3 +1,9 @@
+"""
+chaturanga.player
+-----------------
+Abstract BasePlayer interface shared by all Chaturanga bots and neural agents.
+"""
+
 import numpy as np
 from typing import Tuple
 
