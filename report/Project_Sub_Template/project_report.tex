@@ -56,30 +56,20 @@
 }]
 
 \section{Introduction}
-Chaturanga is played on an $8 \times 8$ uncheckered grid called \emph{Ashtapada}~\cite{murray1913history,golombek1976chess}. While it is the ancestor of modern chess, its mechanics create a different ruleset:
-\begin{enumerate}
-    \item Foot Soldiers (\emph{Pad\={a}ti}) cannot double-step on turn one.
-    \item Ministers (\emph{Mantri}) move only one step diagonally.
-    \item Elephants (\emph{Gaja}) strictly leap two squares diagonally.
-    \item Pawns promote exclusively to Ministers upon reaching the back rank.
-    \item Capturing all opponent non-king pieces (\emph{Bare King}) triggers an immediate win.
-    \item Stalemate counts as an outright win for the stalemated player.
-\end{enumerate}
+Chaturanga is played on an $8 \times 8$ uncheckered grid called \emph{Ashtapada}~\cite{murray1913history,golombek1976chess}. While it is the ancestor of modern chess, its mechanics create a different ruleset: (1) Foot Soldiers (\emph{Pad\={a}ti}) cannot double-step on turn one; (2) Ministers (\emph{Mantri}) move only one step diagonally; (3) Elephants (\emph{Gaja}) strictly leap two squares diagonally; (4) Pawns promote exclusively to Ministers upon reaching the back rank; (5) Capturing all opponent non-king pieces (\emph{Bare King}) triggers an immediate win; (6) Stalemate counts as an outright win for the stalemated player.
 
 These restrictions cause extreme game lengths. In random play, the median game lasts 411 plies. When AlphaZero-style self-play is attempted with limited compute, both players rarely engage before hitting repetitive moves. Because games run so long, the agent rarely sees a win or loss signal, and both the policy and value heads fail to learn.
 
 \subsection{Input and Output Specification}
-\begin{itemize}
-    \item \textbf{Input}: A $(13, 8, 8)$ binary tensor encoding the board for 6 piece types per player and a constant turn plane.
-    \item \textbf{Output}: A 4,096-dimensional masked legal policy vector $\boldsymbol{\pi} \in \mathbb{R}^{4096}$ and a scalar position evaluation $v \in [-1, +1]$.
-\end{itemize}
+\textbf{Input}: A $(13, 8, 8)$ binary tensor encoding the board for 6 piece types per player and a constant turn plane.
+\textbf{Output}: A 4,096-dimensional masked legal policy vector $\boldsymbol{\pi} \in \mathbb{R}^{4096}$ and a scalar position evaluation $v \in [-1, +1]$.
 
 \subsection{Contributions}
 \begin{enumerate}
     \item We implemented an end-to-end ancient Chaturanga engine and dual-headed ResNet paired with PUCT MCTS.
     \item We showed why training purely from scratch fails due to endless repetition draws.
     \item We introduced a first-principles derivation method for heuristics, calibrated with human feedback, to bootstrap the network. By bootstrapping the method, we mean to supply it with training data of games played with greedy rules so it can learn the intrinsic value of pieces. It is worth noting that this violates the condition of the bot learning purely through self-play. Despite this, we wanted to see how well the bot can perform with some pre-trained insights.
-    \item We evaluated the agent against random baselines and four distinct minimax heuristic bots.
+    \item We evaluated the agent against random baselines and four distinct minimax heuristic bots, rated all agents in a 900-game round robin, and ran ablations on rollouts, action masking and lookahead.
 \end{enumerate}
 
 \section{Background and Related Work}
@@ -92,7 +82,7 @@ AlphaZero replaces evaluation functions with a deep neural network $f_\theta(s) 
 
 \begin{figure}[t]
 \centering
-\resizebox{0.95\columnwidth}{!}{%
+\resizebox{0.62\columnwidth}{!}{%
 \begin{tikzpicture}[
     stage/.style={draw, rectangle, rounded corners=3pt, minimum width=3.4cm, minimum height=0.55cm, text centered, font=\scriptsize, fill=blue!5},
     arrow/.style={-{Stealth[scale=0.85]}, thick}
@@ -118,12 +108,7 @@ Modern game-playing agents rely on policy iteration where MCTS acts as a policy 
 \section{Method}
 
 \subsection{Board Encoding and Neural Architecture}
-The board is converted into 13 binary feature planes:
-\begin{itemize}
-    \item Channels 0--5: White $P, H, E, R, M, K$.
-    \item Channels 6--11: Black $P, H, E, R, M, K$.
-    \item Channel 12: Turn indicator plane ($1.0$ for White, $0.0$ for Black).
-\end{itemize}
+The board is converted into 13 binary feature planes: channels 0--5 hold White $P, H, E, R, M, K$, channels 6--11 the same for Black, and channel 12 is a turn indicator ($1.0$ for White, $0.0$ for Black).
 
 The action space maps all from-square to to-square transitions:
 \begin{equation}
@@ -169,28 +154,19 @@ The network backbone contains an initial convolutional layer (64 filters, $3 \ti
 \subsection{Why Pure Self-Play Underperformed}
 Our initial attempt used pure self-play. We trained over 30 iterations (15 games per iteration, 450 games total) using MCTS with 20 simulations per move. 
 
-The training failed due to two factors:
-\begin{enumerate}
-    \item \textbf{Horizon Length}: In Chaturanga, players require 30--50 plies simply to cross the board. Pawns cannot leap forward, and ministers cover only 32 squares of the board.
-    \item \textbf{Repetition Cycles}: Because the value head was untrained, state evaluations were uniform. MCTS drifted into cyclic piece shuffling, terminating in 3-fold repetition draws by ply 45.
-\end{enumerate}
+The training failed due to two factors.
+\textbf{Horizon Length}: In Chaturanga, players require 30--50 plies simply to cross the board. Pawns cannot leap forward, and ministers cover only 32 squares of the board.
+\textbf{Repetition Cycles}: Because the value head was untrained, state evaluations were uniform. MCTS drifted into cyclic piece shuffling, terminating in 3-fold repetition draws by ply 45.
 
 With over 90\% of games ending in draws, target outcomes $z \in \{-1, 0, +1\}$ were zero. The value head got stuck outputting a near-constant value ($\sim$$+0.133$) everywhere. Because $Q$-values across all branches were identical, MCTS could not identify captures.
 
 \subsection{Deriving Piece Values from Move Mobility}
-At this point in the project, we decided to experiment a bit instead of concluding. While we could not achieve the goal of training purely through self-play, we wanted to see how well our architecture could perform with some external help. Instead of guessing piece weights by hand, we wrote a small script (\texttt{discover\_values.py}) to estimate them from the move rules:
+While we could not achieve the goal of training purely through self-play, we wanted to see how well our architecture could perform with some external help. Instead of guessing piece weights by hand, we wrote a small script (\texttt{discover\_values.py}) to estimate them from the move rules:
 \begin{equation}
 \mathbb{E}[M_p] = \frac{1}{64} \sum_{r=0}^{7} \sum_{c=0}^{7} |\text{moves}(p, r, c)|
 \end{equation}
 
-Summing across all 64 squares of an empty Ashtapada:
-\begin{itemize}
-    \item Pawn average reach: $\text{base} = 1.64$ moves.
-    \item Elephant reach: $2.25$ moves.
-    \item Minister reach: $3.06$ moves.
-    \item Horse reach: $5.25$ moves.
-    \item Chariot reach: $14.00$ moves.
-\end{itemize}
+Summing across all 64 squares of an empty Ashtapada gives an average reach of $1.64$ moves for the Pawn ($\text{base}$), $2.25$ for the Elephant, $3.06$ for the Minister, $5.25$ for the Horse and $14.00$ for the Chariot.
 
 To account for piece obstruction on sliding pieces, we applied sublinear dampening ($\alpha = 0.85$):
 \begin{equation}
@@ -215,16 +191,15 @@ Over 12 epochs, value loss dropped from $0.1752$ to $0.0099$, and policy loss dr
 \section{Experimental Setup}
 
 \subsection{Baselines}
-\begin{enumerate}
-    \item \textbf{Uniform Random Bot}: Selects uniformly from legal moves.
-    \item \textbf{NoviceBot}: Selects 80\% random moves, 20\% greedy captures.
-    \item \textbf{ChanakyaBot}: Depth-2 Minimax with alpha-beta pruning and greedy material evaluation.
-    \item \textbf{AryabhataBot}: Depth-2 Minimax with piece-square positional tables favoring center control.
-    \item \textbf{PaniniBot}: Depth-2 Minimax with defensive penalties against piece vulnerability.
-\end{enumerate}
+\textbf{Uniform Random Bot}: Selects uniformly from legal moves.
+\textbf{Greedy 1-ply} and \textbf{Minimax depth 2} (arena baselines): best material after one ply, and alpha-beta search over material.
+\textbf{NoviceBot}: Selects 80\% random moves, 20\% greedy captures.
+\textbf{ChanakyaBot}: Depth-2 Minimax with alpha-beta pruning and greedy material evaluation.
+\textbf{AryabhataBot}: Depth-2 Minimax with piece-square positional tables favoring center control.
+\textbf{PaniniBot}: Depth-2 Minimax with defensive penalties against piece vulnerability.
 
 \subsection{Hardware and Evaluation}
-All benchmarks were run locally on an Intel x86\_64 CPU (16 logical cores) running PyTorch 2.6. Inference used single-thread CPU execution to prevent OpenMP contention. 
+All benchmarks were run locally on an Intel x86\_64 CPU (16 logical cores) running PyTorch 2.6 (arena runs: Apple M3). Inference used single-thread CPU execution to prevent OpenMP contention. 
 
 \section{Results}
 
@@ -248,7 +223,7 @@ Major (+Ratha +Ashwa) & +0.5748 & -0.3850 & \textbf{+0.9598} \\
 \bottomrule
 \end{tabular}%
 }
-\caption{Value Head material diagnostic probe matrix.}
+\caption{Value-head material probe.}
 \label{tab:probe}
 \end{table}
 
@@ -271,7 +246,7 @@ Bootstrapped Fine-Tune & 200 & 250 & \textbf{90.0\% (9)} & \textbf{0.0\% (0)} & 
 \bottomrule
 \end{tabular}%
 }
-\caption{Benchmark results vs. Uniform Random Bot (10 games).}
+\caption{Benchmark vs. Random Bot (10 games).}
 \label{tab:random_bench}
 \end{table}
 
@@ -297,36 +272,60 @@ PaniniBot & 0 & 1 & 1 & 0.0\% (50\% draw) \\
 \bottomrule
 \end{tabular}%
 }
-\caption{Tournament benchmark against heuristic Scholar Bots.}
+\caption{Tournament vs. Scholar Bots (8 games).}
 \label{tab:tourney}
 \end{table}
 
-The agent achieved an 87.5\% unbeaten rate (25.0\% wins, 62.5\% draws, 12.5\% losses) across the tournament. It cleanly defeated NoviceBot in both matches (100\% win rate) while holding ChanakyaBot and AryabhataBot to draws in every game.
+The agent was unbeaten in 87.5\% of games (25.0\% wins, 62.5\% draws, 12.5\% losses), winning both games against NoviceBot and drawing every game against ChanakyaBot and AryabhataBot.
+
+\subsection{Round-Robin Arena and Elo Ratings}
+The arena harness (\texttt{arena/}) played a round robin of 10 players, 20 games per pair with colours alternated (900 games), drawing at threefold repetition or 300 plies. Elo is a Bradley--Terry fit (draws count half) anchored at Random $=0$; 95\% bootstrap intervals are about $\pm60$. One network plays at three tiers: Master (80 sims, $\tau{=}0.05$), Intermediate (15 sims, $\tau{=}0.6$) and Novice (raw policy, 15\% random moves).
+
+\begin{table}[h]
+\centering
+\footnotesize
+\begin{tabular}{@{}lrr@{\hspace{1.2em}}lrr@{}}
+\toprule
+Player & Elo & Score & Player & Elo & Score \\
+\midrule
+Minimax d2 & 672 & 80\% & Greedy 1-ply & 429 & 52\% \\
+Chanakya & 618 & 74\% & \textbf{AZ-Intermed.} & \textbf{275} & 34\% \\
+Panini & 618 & 74\% & \textbf{AZ-Novice} & \textbf{152} & 22\% \\
+Aryabhata & 608 & 73\% & NoviceBot & 149 & 21\% \\
+\textbf{AZ-Master} & \textbf{499} & 60\% & Random & 0 & 9\% \\
+\bottomrule
+\end{tabular}
+\caption{Round robin, 900 games (Random $=0$).}
+\label{tab:elo}
+\end{table}
+
+The tiers are correctly ordered and about 350 Elo apart, but far below the planned 1800/1300/700. At 80 simulations the agent loses to depth-2 search (5\% against Minimax, 25--45\% against the minimax Scholar bots). At 25 simulations, pure self-play (59) is no better than an untrained network (88); the bootstrapped one reaches 209.
+
+\subsection{Ablations: What Did Not Work}
+\textbf{Random rollouts.} Random games last a median 411 plies, so 94\% of rollouts are unfinished at 120 plies. The mean of 128 rollouts correlates 0.56 with the outcome of depth-2 minimax play from the same position, versus 0.77 for the value head, at 41\,ms per rollout versus 1.6\,ms per network call.
+\textbf{Unmasked policy.} Only 0.5\% of the 4096 actions are legal on average, and an unmasked softmax puts 99.5--100\% of its mass on illegal moves. Trained on the same data, the masked network reached 14.6\% accuracy, the unmasked one 7.2\% (chance 6.5\%).
+\textbf{Greedy 1-ply.} In 200 positions where a capture loses material to an Elephant leap, Greedy took it 48.5\% of the time, the agent 10\% and depth-2 minimax 1.5\%.
 
 \section{Discussion and Limitations}
 
 \subsection{The Draw Tendency}
-The tournament results show one clear weakness: 62.5\% of games against heuristic bots ended in 3-fold repetition draws. There are two reasons for this:
-\begin{enumerate}
-    \item \textbf{Opponent Behavior}: The scholar bots do not maintain move history. When faced with equal evaluations, they oscillate pieces between two squares.
-    \item \textbf{Neutral Draw Evaluations}: The neural network evaluates equal positions near $V(s) \approx 0.0$. Because a draw is also evaluated as $0.0$, the agent sees no negative value in accepting repetition. In Game 6 against AryabhataBot, the agent held an 8-piece to 4-piece advantage, yet allowed a repetition draw at ply 112.
-\end{enumerate}
+The tournament results show one clear weakness: 62.5\% of games against heuristic bots ended in 3-fold repetition draws. There are two reasons for this.
+\textbf{Opponent Behavior}: The scholar bots do not maintain move history. When faced with equal evaluations, they oscillate pieces between two squares.
+\textbf{Neutral Draw Evaluations}: The neural network evaluates equal positions near $V(s) \approx 0.0$. Because a draw is also evaluated as $0.0$, the agent sees no negative value in accepting repetition. In Game 6 against AryabhataBot, the agent held an 8-piece to 4-piece advantage, yet allowed a repetition draw at ply 112.
 
 \subsection{Search Depth and Compute Constraints}
 The agent's strength is heavily bottlenecked by MCTS simulations. At 30 simulations, the agent searches only 1--2 plies deep, falling prey to depth-2 alpha-beta traps. At 300 simulations, the agent plays strong moves but requires $\sim$30,000 forward passes per game. On CPU, this takes 4--5 minutes per game, making large evaluation sweeps slow.
 
 \subsection{Future Work}
-\begin{enumerate}
-    \item \textbf{Contempt Factor}: Incorporating a negative penalty for repetition draws ($V = -0.25$) when ahead in material will force the agent to avoid lazy repetitions.
-    \item \textbf{GPU Batched MCTS}: Running vectorized leaf evaluations in parallel will allow 300+ simulations to execute in under 10 seconds per game.
-    \item \textbf{Iterative Self-Play Reinforcement}: Using the bootstrapped weights as the starting checkpoint for an extended AlphaZero self-play run.
-\end{enumerate}
+\textbf{Contempt Factor}: Incorporating a negative penalty for repetition draws ($V = -0.25$) when ahead in material will force the agent to avoid lazy repetitions.
+\textbf{GPU Batched MCTS}: Running vectorized leaf evaluations in parallel will allow 300+ simulations to execute in under 10 seconds per game.
+\textbf{Iterative Self-Play Reinforcement}: Using the bootstrapped weights as the starting checkpoint for an extended AlphaZero self-play run.
 
 \section{Conclusion}
 We built ChaturangZero, a neural MCTS agent for ancient Chaturanga. We showed that pure self-play from scratch fails in low-mobility board games due to extreme game horizons and draw collapse. By deriving piece weights from move mobility and bootstrapping the network on 2-ply games, our agent beat a random player 90\% of the time and achieved an 87.5\% unbeaten rate against depth-2 minimax bots.
 
 \section*{Individual Member Contributions}
-{\small
+{\footnotesize
 \noindent\begin{tabularx}{\columnwidth}{@{}l X@{}}
 \toprule
 Name & Contribution \\
@@ -334,7 +333,7 @@ Name & Contribution \\
 \textbf{Aaryan Pandey} & Training pipeline lead: MCTS-NN integration, self-play loop, curriculum generation, teacher bootstrapping, loss masking. \\
 \textbf{Vraj Makwana} & Deep learning architect: Board-to-tensor encoder, action space indexing, 4-block dual-headed ResNet architecture. \\
 \textbf{Sahaj Jhamb} & Heuristic engine \& UI: Implemented Scholar bots (Novice, Chanakya, Aryabhata, Panini), web board UI, opponent selector. \\
-\textbf{Harshal Lahoti} & Benchmarking \& analysis: Arena tournament harness, material diagnostic probes, ablation experiments, report figures. \\
+\textbf{Harshal Lahoti} & Benchmarking \& analysis: Arena round-robin harness and Bradley--Terry Elo, skill-tier evaluation, ablation experiments, report figures. \\
 \bottomrule
 \end{tabularx}}
 
@@ -342,19 +341,17 @@ Name & Contribution \\
 \noindent\emph{All members have read this report and agree with the statement above.}
 
 \section*{Generative AI Disclosure}
-Generative AI tools were used during this project as follows:
-\begin{itemize}
-    \item \textbf{Gemini 3.8 Flash \& Gemini Neon}: Used for drafting environment unit tests, debugging PyTorch tensor indexing in the action masking logic, and formatting benchmark tables.
-    \item \textbf{Claude Opus 5}: Used for code review, validating the mathematical formulation of sublinear piece mobility, and the frontend UI.
-\end{itemize}
-All code and report text were manually verified, debugged, and tested by the team members, who take full academic responsibility for the contents.
+{\small Generative AI tools were used during this project as follows.
+\textbf{Gemini 3.8 Flash \& Gemini Neon}: Used for drafting environment unit tests, debugging PyTorch tensor indexing in the action masking logic, and formatting benchmark tables.
+\textbf{Claude Opus 5}: Used for code review, validating the mathematical formulation of sublinear piece mobility, and the frontend UI.
+All code and report text were manually verified, debugged, and tested by the team members, who take full academic responsibility for the contents.\par}
 
 \section*{Code Availability}
-The complete source code, trained neural network weights, evaluation logs, and browser UI are publicly available at:\\
-\url{\githuburl}
+{\small The complete source code, trained neural network weights, evaluation logs, and browser UI are publicly available at \url{\githuburl}.\par}
 
 \begin{thebibliography}{9}
-\small
+\footnotesize
+\setlength{\itemsep}{0pt}
 \bibitem{silver2018alphazero}
 D.~Silver, T.~Hubert, J.~Schrittwieser, et~al.
 \newblock A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play.
