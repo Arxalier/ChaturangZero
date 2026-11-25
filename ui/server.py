@@ -68,7 +68,9 @@ def get_ai_model():
                 except ImportError:
                     from training.mcts_agent import DummyNeuralNet as ChaturangaNet
                 model = ChaturangaNet()
-                model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+                ckpt = torch.load(ckpt_path, map_location="cpu")
+                state_dict = ckpt["model_state_dict"] if isinstance(ckpt, dict) and "model_state_dict" in ckpt else ckpt
+                model.load_state_dict(state_dict)
                 model.eval()
                 CACHED_AI_MODEL = model
                 CACHED_CKPT_MTIME = mtime
@@ -213,6 +215,7 @@ class Handler(BaseHTTPRequestHandler):
                     "components": COMPONENTS,
                     "rules": RULES_CARD,
                     "legend": piece_legend(),
+                    "default_sims": AI_NUM_SIMS,
                     "state": SESSION.state(),
                 })
             elif route == "/api/state":
@@ -267,7 +270,9 @@ class Handler(BaseHTTPRequestHandler):
 
                 elif route in ("/api/ai_move", "/api/chaturang_move", "/api/bot_move"):
                     bot_id = body.get("bot", "alphazero")
-                    result = play_bot_move(SESSION, bot_id=bot_id, model_loader=get_ai_model)
+                    sims = body.get("sims", AI_NUM_SIMS)
+                    sims = max(1, min(1000, int(sims)))
+                    result = play_bot_move(SESSION, bot_id=bot_id, model_loader=get_ai_model, num_sims=sims)
                     self._send_json({"result": result, "state": SESSION.state()})
 
                 elif route == "/api/perft":

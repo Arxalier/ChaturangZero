@@ -98,6 +98,11 @@
           <span class="mini-label">Opponent</span>
           <select id="botSelect" class="bot-select"></select>
         </label>
+        <label class="sims-picker" id="simsWrap" for="simsSlider" title="MCTS simulations per ChaturangZero move">
+          <span class="mini-label">Sims</span>
+          <input type="range" id="simsSlider" class="sims-slider" min="10" max="400" step="10" value="40">
+          <span class="sims-val" id="simsVal">40</span>
+        </label>
         <span class="bot-meta" id="botSubtitle">—</span>
         <button class="btn ai-btn" id="btnAI">Bot Move <kbd>Z</kbd></button>
         <label class="switch" title="Automatically reply with the selected opponent as Black">

@@ -124,7 +124,7 @@ class MCTSNode:
 
 class NeuralMCTS:
     """MCTS driven by a dual-headed policy/value neural network."""
-    def __init__(self, model=None, c_puct: float = 1.25, num_simulations: int = 40):
+    def __init__(self, model=None, c_puct: float = 1.25, num_simulations: int = 40, draw_penalty: float = 0.0):
         if model is not None:
             self.model = model
         else:
@@ -134,6 +134,7 @@ class NeuralMCTS:
                 self.model = DummyNeuralNet()
         self.c_puct = c_puct
         self.num_simulations = num_simulations
+        self.draw_penalty = draw_penalty
 
         # Cache device once to eliminate repeated parameter inspections
         if torch is not None and hasattr(self.model, "parameters"):
@@ -206,8 +207,8 @@ class NeuralMCTS:
 
             # 2. Evaluation & Expansion
             if is_rep_draw:
-                # 3-fold repetition terminal draw evaluated natively as 0.0
-                value = 0.0
+                # Positive value from leaf_player (-mover) perspective penalizes mover by -draw_penalty
+                value = float(self.draw_penalty)
             else:
                 legal = get_all_legal_moves(board, node.current_player)
                 outcome = get_game_outcome(board, node.current_player, legal_moves=legal)
@@ -296,14 +297,16 @@ class ChaturangPlayer(BasePlayer):
         num_sims: int = 40,
         temperature: float = 0.1,
         top_k: Optional[int] = None,
-        blunder_rate: float = 0.0
+        blunder_rate: float = 0.0,
+        draw_penalty: float = 0.0
     ):
         self.num_sims = num_sims
         self.temperature = temperature
         self.top_k = top_k
         self.blunder_rate = blunder_rate
+        self.draw_penalty = draw_penalty
         self.position_counts: Dict[bytes, int] = {}
-        self.mcts = NeuralMCTS(model=model, num_simulations=num_sims)
+        self.mcts = NeuralMCTS(model=model, num_simulations=num_sims, draw_penalty=draw_penalty)
 
     def reset(self):
         """Clears visited positions for a fresh game."""

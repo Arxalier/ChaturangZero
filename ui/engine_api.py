@@ -474,6 +474,12 @@ def codex() -> List[Dict[str, Any]]:
 
 BOT_SPECS: List[Dict[str, str]] = [
     {
+        "id": "alphazero",
+        "name": "ChaturangZero",
+        "subtitle": "AlphaZero Neural MCTS",
+        "family": "neural",
+    },
+    {
         "id": "chanakya",
         "name": "Chanakya",
         "subtitle": "Aggressive Tactician · Depth-2 Alpha-Beta",
@@ -497,12 +503,6 @@ BOT_SPECS: List[Dict[str, str]] = [
         "subtitle": "Baseline · 80% Random / 20% Capture",
         "family": "scholar",
     },
-    {
-        "id": "alphazero",
-        "name": "ChaturangZero",
-        "subtitle": "AlphaZero Neural MCTS (40 sims)",
-        "family": "neural",
-    },
 ]
 
 _BOT_BY_ID: Dict[str, Dict[str, str]] = {spec["id"]: spec for spec in BOT_SPECS}
@@ -513,7 +513,7 @@ def bot_catalogue() -> List[Dict[str, str]]:
     return list(BOT_SPECS)
 
 
-def create_bot(bot_id: str, model_loader=None):
+def create_bot(bot_id: str, model_loader=None, num_sims: int = 40):
     """Instantiates a BasePlayer matching `bot_id`."""
     from bots import NoviceBot, ChanakyaBot, AryabhataBot, PaniniBot
 
@@ -528,7 +528,7 @@ def create_bot(bot_id: str, model_loader=None):
     if bot_id in ("alphazero", "chaturangzero"):
         from training.mcts_agent import ChaturangPlayer
         model = model_loader() if callable(model_loader) else None
-        return ChaturangPlayer(model=model, num_sims=40, temperature=0.1)
+        return ChaturangPlayer(model=model, num_sims=num_sims, temperature=0.1)
 
     raise ValueError(f"Unknown bot id: {bot_id!r}")
 
@@ -537,6 +537,7 @@ def play_bot_move(
     session: Session,
     bot_id: str = "alphazero",
     model_loader=None,
+    num_sims: int = 40,
 ) -> Dict[str, Any]:
     """
     Queries the selected BasePlayer for a move via get_move() and applies it
@@ -558,7 +559,7 @@ def play_bot_move(
         return {"ok": False, "error": "No legal moves available"}
 
     t0 = time.perf_counter()
-    bot = create_bot(bot_id, model_loader=model_loader)
+    bot = create_bot(bot_id, model_loader=model_loader, num_sims=num_sims)
     bot_cls = type(bot).__name__
 
     if bot_id == "alphazero":

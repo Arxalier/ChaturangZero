@@ -356,7 +356,7 @@ function drawCodex() {
     for (let r = orow - 2; r <= orow + 2; r++) {
       for (let c = ocol - 2; c <= ocol + 2; c++) {
         if (r === orow && c === ocol) {
-          mini += `<i class="origin"><span class="piece w" style="font-size:15px">${GLYPH[p.kind]}</span></i>`;
+          mini += `<i class="origin"><span class="piece w" style="font-size:12px">${GLYPH[p.kind]}</span></i>`;
         } else {
           mini += `<i class="${reach.has(`${r},${c}`) ? 'reach' : ''}"></i>`;
         }
@@ -445,6 +445,8 @@ function updateBotSubtitle() {
   const spec = bots.find((b) => b.id === id);
   const el = $('botSubtitle');
   if (el) el.textContent = spec ? spec.subtitle : '';
+  const simsWrap = $('simsWrap');
+  if (simsWrap) simsWrap.hidden = (id !== 'alphazero');
 }
 
 function drawBots() {
@@ -454,7 +456,11 @@ function drawBots() {
   sel.innerHTML = bots
     .map((b) => `<option value="${b.id}">${b.name} (${b.family === 'neural' ? 'AlphaZero' : 'Scholar'})</option>`)
     .join('');
-  sel.value = 'chanakya';
+  sel.value = bots.some((b) => b.id === 'alphazero') ? 'alphazero' : bots[0].id;
+  if ($('simsSlider') && S.boot.default_sims) {
+    $('simsSlider').value = S.boot.default_sims;
+    if ($('simsVal')) $('simsVal').textContent = S.boot.default_sims;
+  }
   updateBotSubtitle();
 }
 
@@ -566,7 +572,8 @@ async function aiMove() {
     btn.textContent = 'Thinking…';
   }
   try {
-    const res = await apiPost('/api/ai_move', { bot: botId });
+    const sims = $('simsSlider') ? Number($('simsSlider').value) : 40;
+    const res = await apiPost('/api/ai_move', { bot: botId, sims });
     if (!res.result.ok) {
       toast(res.result.error || 'No bot move available', true);
       return false;
@@ -643,6 +650,11 @@ function wire() {
   $('btnRandom').onclick = randomMove;
   if ($('btnAI')) $('btnAI').onclick = aiMove;
   if ($('botSelect')) $('botSelect').onchange = updateBotSubtitle;
+  if ($('simsSlider')) {
+    $('simsSlider').oninput = () => {
+      if ($('simsVal')) $('simsVal').textContent = $('simsSlider').value;
+    };
+  }
   if ($('tgVsAI')) {
     $('tgVsAI').onchange = () => {
       if ($('tgVsAI').checked && S.state && !S.state.outcome.over && S.state.current_player === -1) {

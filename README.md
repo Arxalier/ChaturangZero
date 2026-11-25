@@ -1,405 +1,280 @@
-# ChaturangZero: Self-Play AlphaZero Agent for Chaturanga
+# ChaturangZero
 
-ChaturangZero is an artificial intelligence project aiming to train an AlphaZero-style reinforcement learning agent for **Chaturanga**, the ancient Indian ancestor of Chess, Shogi, and Makruk, played on an 8x8 uncheckered grid (the *Ashtapada*).
+**CS F407 (Artificial Intelligence), AY 2026–27 Semester I — BITS Pilani, K.K. Birla Goa Campus**  
+**Team Syllogism:** Aaryan Pandey, Vraj Makwana, Harshal Lahoti, Sahaj Jhamb
 
-This repository implements the historical **Murray/Golombek ruleset** with high-performance move generation, strict mathematical invariant checking, automated unit testing, an interactive browser explorer, and full support for future Monte Carlo Tree Search (MCTS) and deep neural network integration.
+ChaturangZero is a reinforcement learning and game-engine project for **Chaturanga**, the ancient Indian predecessor to chess, shogi, and makruk, played on an 8×8 uncheckered grid (the *Ashtapada*).
+
+This repository covers both halves of the project: the historical **Murray/Golombek ruleset** engine with Perft and invariant testing, an interactive local browser UI, four depth-2 heuristic "Scholar Bots", a dual-headed PyTorch ResNet paired with PUCT Monte Carlo Tree Search (MCTS), and our post-midsem experiments with pure self-play collapse and mobility-based heuristic bootstrapping.
 
 ---
 
 ## Table of Contents
-1. [The Rules of Chaturanga](#the-rules-of-chaturanga-murraygolombek-ruleset)
-2. [Repository Layout & File Breakdown](#repository-layout--file-breakdown)
-3. [Quickstart & Usage Instructions](#quickstart--usage-instructions)
+1. [The Rules of Chaturanga (Murray/Golombek)](#the-rules-of-chaturanga-murraygolombek)
+2. [Repository Layout & Module Guide](#repository-layout--module-guide)
+3. [Quickstart & Usage](#quickstart--usage)
    - [1. Installation](#1-installation)
-   - [2. Visual Engine Explorer (Browser UI)](#2-visual-engine-explorer-browser-ui)
+   - [2. Browser UI (Engine Explorer & Bot Arena)](#2-browser-ui-engine-explorer--bot-arena)
    - [3. Interactive Terminal Play](#3-interactive-terminal-play)
-   - [4. AlphaZero MCTS Agent (Milestone 2 Smoke Test)](#4-alphazero-mcts-agent-milestone-2-smoke-test)
-   - [5. Automated Unit Testing](#5-automated-unit-testing)
-   - [6. Random Playout Fuzz Testing & Invariant Validation](#6-random-playout-fuzz-testing--invariant-validation)
-   - [7. Perft Benchmarks & Move Divide](#7-perft-benchmarks--move-divide)
-   - [8. Using as a Python Package](#8-using-as-a-python-package)
-4. [Comprehensive Study Guide: How the System Works](#comprehensive-study-guide-how-the-system-works)
+   - [4. Benchmarking & Value Discovery](#4-benchmarking--value-discovery)
+   - [5. Automated Tests, Invariant Fuzzing & Perft](#5-automated-tests-invariant-fuzzing--perft)
+   - [6. Python Package Usage](#6-python-package-usage)
+4. [System Design: How Everything Fits Together](#system-design-how-everything-fits-together)
    - [A. Board Representations (2D Matrix vs. 3D Tensor)](#a-board-representations-2d-matrix-vs-3d-tensor)
-   - [B. Action Space Representation (4,096 Dimensions)](#b-action-space-representation-4096-dimensions)
-   - [C. Move Generation & Check Detection Pipeline](#c-move-generation--check-detection-pipeline)
-   - [D. Dual-Layer Testing Philosophy (Perft vs. Fuzzing)](#d-dual-layer-testing-philosophy-perft-vs-fuzzing)
-   - [E. Roadmap to Milestone 2 & AlphaZero](#e-roadmap-to-milestone-2--alphazero)
+   - [B. Action Space & Illegal Move Masking (4,096 Dimensions)](#b-action-space--illegal-move-masking-4096-dimensions)
+   - [C. Move Generation & Raycast Check Detection](#c-move-generation--raycast-check-detection)
+   - [D. Testing Strategy: Perft vs. Random Playout Fuzzing](#d-testing-strategy-perft-vs-random-playout-fuzzing)
+5. [Post-Midsem Progress (Milestones 2–4)](#post-midsem-progress-milestones-24)
+   - [Pure Self-Play Failure & Draw Collapse](#pure-self-play-failure--draw-collapse)
+   - [Mobility-Derived Piece Values & Supervised Bootstrapping](#mobility-derived-piece-values--supervised-bootstrapping)
+   - [Scholar Heuristic Bots & Tournament Benchmarks](#scholar-heuristic-bots--tournament-benchmarks)
+   - [Observed Results & Current Limitations](#observed-results--current-limitations)
 
 ---
 
-## The Rules of Chaturanga (Murray/Golombek Ruleset)
+## The Rules of Chaturanga (Murray/Golombek)
 
-> *Historical Source: [ChessVariants Historical Rules: Chaturanga](https://www.chessvariants.com/historic.dir/chaturanga.html)*
+> *Historical Reference: [ChessVariants Historical Rules: Chaturanga](https://www.chessvariants.com/historic.dir/chaturanga.html)*
 
-### 1. The Board & Setup
-- **Ashtapada**: An 8x8 uncheckered grid.
-- **Symmetry**: 16 pieces per player mirroring each other across ranks 0–1 (Black) and 6–7 (White).
-  - The **Kings (*Rāja*)** face each other on the e-file (col 4).
-  - The **Ministers (*Mantri*)** face each other on the d-file (col 3).
+### 1. Board & Starting Symmetry
+* **Ashtapada:** An 8×8 uncheckered grid (`WHITE = 1` on ranks 6–7, `BLACK = -1` on ranks 0–1). Corner and center board markings are decorative only.
+* **Alignment:** Each side starts with 16 pieces mirroring each other across the center:
+  * **Kings (*Rāja*)** face each other on the e-file (col 4).
+  * **Ministers (*Mantri*)** face each other on the d-file (col 3).
 
-### 2. Piece Movements & Sanskrit Aliases
+### 2. Piece Movements & Sanskrit Names
 
 | English Name | Sanskrit Name | Movement Mechanics | Modern Chess Equivalent |
 |---|---|---|---|
-| **King** | *Rāja* | 1 square in any direction (orthogonal or diagonal). Cannot move into check. No castling. | King (no castling) |
+| **King** | *Rāja* | 1 square in any orthogonal or diagonal direction. Cannot move into check. No castling. | King (no castling) |
 | **Minister** | *Mantri* | Exactly 1 square diagonally in any of the 4 directions. | Queen (heavily restricted) |
-| **Elephant** | *Gaja / Hasti* | Exactly 2 squares diagonally, leaping over intervening pieces. | Alfil (ancient diagonal leaper) |
-| **Horse** | *Ashwa* | L-shaped leap (2x3 rectangle), jumping over intervening pieces. | Knight |
-| **Chariot** | *Ratha* | Orthogonal slider along ranks and files over unobstructed squares. | Rook |
-| **Foot Soldier** | *Padāti* | Moves 1 square straight forward; captures 1 square diagonally forward. No initial double-step, no en passant. | Pawn (no double-step/en passant) |
+| **Elephant** | *Gaja / Hasti* | Exactly 2 squares diagonally, leaping over any intervening piece. | Alfil |
+| **Horse** | *Ashwa* | L-shaped leap (2×3), jumping over intervening pieces. | Knight |
+| **Chariot** | *Ratha* | Orthogonal slider along ranks and files over open squares. | Rook |
+| **Foot Soldier** | *Padāti* | 1 square straight forward to move; 1 square diagonally forward to capture. No double-step, no en passant. | Pawn (restricted) |
 
-### 3. Automatic Pawn Promotion
-When a Foot Soldier (*Padāti*) reaches the furthest rank on the opponent's side (rank 0 for White, rank 7 for Black), it **promotes exclusively and automatically to a Minister (*Mantri*)**. Unlike modern chess, there is no choice of piece.
+### 3. Automatic Promotion
+When a Foot Soldier (*Padāti*) reaches the opponent's back rank (row 0 for White, row 7 for Black), it **automatically promotes to a Minister (*Mantri*)**. There is no underpromotion choice.
 
-### 4. Terminal States & Reward Triggers
-The game ends immediately upon meeting any of the following three conditions:
-- **Checkmate (+1 Win / -1 Loss)**: The opponent's King is under attack (in check) and has zero legal moves to escape, block, or capture the attacker.
-- **Baring the King (+1 Win / -1 Loss)**: A player captures the opponent's last remaining non-King piece, leaving the opponent's King completely isolated on the board. The baring player instantly wins.
-- **Stalemate (+1 Win / -1 Loss)**: A player is **not** in check but has zero legal moves. Per Murray/Golombek rules, **the stalemated player wins the game (+1)**! (Unlike modern chess where it is a draw).
+### 4. Terminal States
+Games end right away when any of these three conditions occur:
+* **Checkmate (`+1` Win / `-1` Loss):** The opponent's King is under attack and has no legal move to escape, block, or capture the attacker.
+* **Baring the King (`+1` Win / `-1` Loss):** A player captures the opponent's last non-King piece, leaving the enemy King alone on the board. The capturing player wins immediately.
+* **Stalemate (`+1` Win / `-1` Loss):** A player is **not** in check and has zero legal moves. Under Murray/Golombek rules, **the stalemated player wins (`+1`)**, rather than drawing.
 
 ---
 
-## Repository Layout & File Breakdown
+## Repository Layout & Module Guide
 
 ```
 ChaturangZero/
 ├── chaturanga/              # Core game engine package
 │   ├── __init__.py          # Public API exports
-│   ├── pieces.py            # Numerical piece representations, Sanskrit constants, display glyphs
-│   ├── moves.py             # Pseudo-legal move generators for each piece type
-│   ├── board.py             # Board initialization, immutable state transitions, text rendering
-│   ├── rules.py             # Optimized check detection, legal move pruning, outcomes, perft
-│   └── env.py               # ChaturangaEnv RL/Gym environment wrapper with state caching
-├── neural/                  # Deep learning representations & model definitions
-│   ├── encoder.py           # Board to (13, 8, 8) tensor & move to action encoder
-│   └── model.py             # Dual-headed Convolutional ResNet (Policy & Value heads)
-├── training/                # Reinforcement learning & training pipeline
-│   ├── mcts_agent.py        # Neural MCTS, PUCT selection, and ChaturangPlayer
-│   ├── self_play.py         # Curriculum board generation & replay buffer
-│   ├── train.py             # Loss functions & masked optimization loop
-│   └── bootstrap_train.py   # Teacher-guided fine-tuning pipeline
-├── checkpoints/             # Trained weights (gen_final.pt) and metrics logs
-├── ui/                      # Browser UI for presentations (stdlib HTTP server + JSON API)
-│   ├── server.py            # HTTP server routing API requests and serving static assets
-│   ├── engine_api.py        # Adapter converting engine outputs into JSON with call tracing
-│   ├── scenarios.py         # 7 preset tactical demo positions (mate, stalemate, bare king, etc.)
-│   ├── README.md            # Dedicated documentation for the visual browser UI
-│   └── static/              # Frontend web assets (index.html, style.css, app.js)
-├── tests/                   # Automated unit testing suite
-│   ├── __init__.py          # Package initialization
-│   └── test_validity.py     # Unittest suite verifying Perft counts and rollout invariants
-├── discover_values.py       # Heuristic mobility & board centrality discovery tool
-├── test_vs_random.py        # Automated benchmark against uniform random bot
-├── benchmark_experiments.py # Configurable simulation & ply ablation harness
-├── report.txt               # Evaluation report & material diagnostic probe matrix
-├── mcts.py                  # PUCT-guided Monte Carlo Tree Search (AlphaZero tree search)
-├── test_mcts.py             # MCTS smoke test with dummy policy/value evaluator
-├── validity_test.py         # Standalone random rollout fuzz tester & invariant validator
-├── perft.py                 # Perft tool with root-move breakdown ("divide") and fuzzing
-├── play.py                  # Interactive CLI play loop (supports --ai)
-├── requirements.txt         # Project dependencies (numpy, torch)
-├── info.txt                 # Quick reference: piece encodings, board logic, 3D tensor map
-├── info_unit_test.txt       # Technical documentation: testing methodologies & optimizations
-├── milestone1.txt           # Milestone 1 specification and rules reference
-└── projectDetails.txt       # 5-phase AlphaZero architecture roadmap & team division
+│   ├── pieces.py            # Signed int8 piece codes, Sanskrit aliases, display symbols
+│   ├── moves.py             # Pseudo-legal move generators per piece type
+│   ├── board.py             # Starting board, copy-on-move transitions, ASCII render
+│   ├── rules.py             # Raycast check detector, legal move filter, outcomes, perft
+│   └── env.py               # ChaturangaEnv RL environment with move/outcome caching
+├── neural/                  # PyTorch tensor encoding & dual-headed ResNet
+│   ├── encoder.py           # Board -> (13, 8, 8) tensor & move <-> 4,096 action index
+│   └── model.py             # 4-block ResNet (ChaturangaNet) with Policy & Value heads
+├── training/                # MCTS search, self-play, and supervised bootstrapping
+│   ├── mcts_agent.py        # NeuralMCTS (PUCT) and ChaturangPlayer (BasePlayer)
+│   ├── self_play.py         # Self-play rollouts, curriculum generator, ReplayBuffer
+│   ├── train.py             # Masked multi-task loss, flip augmentation, diagnostics
+│   ├── bootstrap_train.py   # 2-ply heuristic game generation & transfer fine-tuning
+│   └── test_pipeline.py     # CPU end-to-end MCTS + training step sanity check
+├── bots/                    # Heuristic opponents (Scholar Bots)
+│   ├── __init__.py
+│   ├── scholar_bots.py      # NoviceBot, ChanakyaBot, AryabhataBot, PaniniBot
+│   └── test_bots.py         # Automated verification matches between Scholar Bots
+├── ui/                      # Local stdlib web UI + JSON API
+│   ├── server.py            # ThreadingHTTPServer + static asset hosting + --sims flag
+│   ├── engine_api.py        # Adapter connecting engine, Scholar Bots, and ChaturangZero
+│   ├── scenarios.py         # 7 demo positions (mate, stalemate-win, bare king, pin, etc.)
+│   ├── README.md            # Notes specific to the browser UI
+│   └── static/              # Frontend HTML/CSS/JS (dark & light themes)
+├── checkpoints/             # Saved PyTorch weights (gen_final.pt) and training JSON logs
+├── tests/                   # Automated unittest suite, Perft, and fuzz validation
+│   ├── test_validity.py     # unittest suite for Perft(1)/Perft(2) and game invariants
+│   ├── perft.py             # Perft leaf counter with root divide & fuzz option
+│   └── validity_test.py     # Random playout fuzz tester checking 7 game invariants
+├── misc/                    # Analysis & ablation scripts (discover_values, test_vs_random)
+├── report/                  # Final 4-page LaTeX report & Markdown draft
+├── docs/                    # Milestone specs & early reference notes
+├── benchmark_bots.py        # 8-game tournament script vs. all 4 Scholar Bots
+├── play.py                  # Interactive terminal play (human vs. human or AI)
+├── report.txt               # Saved diagnostic probes and benchmark tournament logs
+└── requirements.txt         # Core dependencies (numpy, torch)
 ```
 
-### File-by-File Details
+### Key Package Details
 
-#### `chaturanga/pieces.py`
-Defines piece constants as signed 8-bit integers:
-* `EMPTY = 0`
-* Positive integers for White: `PAWN=1`, `HORSE=2`, `ELEPHANT=3`, `CHARIOT=4`, `MINISTER=5`, `KING=6`
-* Negative integers for Black: `-1` to `-6`
-* Exports Sanskrit aliases (`PADATI`, `ASHWA`, `GAJA`, `RATHA`, `MANTRI`, `RAJA`) and ASCII/Unicode display symbols.
-
-#### `chaturanga/moves.py`
-Contains pseudo-legal move generators for each piece type:
-* `get_chariot_moves()`: Orthogonal raycaster terminating on board edges, obstacles, or enemy captures.
-* `get_horse_moves()`: 8 L-shaped leaps jumping over intervening squares.
-* `get_elephant_moves()`: 4 strict 2-square diagonal leaps jumping over intervening squares.
-* `get_minister_moves()`: 4 strict 1-square diagonal steps.
-* `get_king_moves()`: 8 adjacent orthogonal and diagonal steps.
-* `get_pawn_moves()`: 1 square straight forward into empty space, 1 square diagonal forward capture.
-
-#### `chaturanga/board.py`
-* `create_starting_board()`: Creates an $8 \times 8$ `np.int8` array initialized with Murray/Golombek symmetry.
-* `make_move(board, start_pos, end_pos)`: Applies a move and returns an **independent copy** of the board, automatically promoting any pawn reaching the opposite back rank (row 0 for White, row 7 for Black) strictly to a Minister.
-* `render_board()`: Produces a human-readable ASCII layout of the board.
-
-#### `chaturanga/rules.py`
-* `find_king(board, player)`: Fast linear scan locating the King's coordinates.
-* `is_in_check(board, player)`: High-performance raycast and leap check detector evaluating direct attack lines from the King's square.
-* `get_all_legal_moves(board, player)`: Filters pseudo-legal moves by simulating them and discarding any move that leaves the moving player's King in check.
-* `get_game_outcome(board, player, legal_moves)`: Evaluates terminal game states (Bare King, Checkmate, Stalemate).
-* `perft(board, player, depth)`: Recursive depth-first tree traversal counting leaf nodes.
-
-#### `chaturanga/env.py`
-Encapsulates game state into a standard RL environment:
-* `reset()`: Resets to starting board and clears history.
-* `step(move)`: Executes a move, switches turn, updates history, and returns `(board, outcome, done)`.
-* Caches legal moves and outcomes per ply to eliminate redundant computations.
-
-#### `ui/` (Browser Engine Explorer)
-A standalone presentation tool built with Python's standard library `http.server`:
-* `ui/server.py`: Listens on `http://127.0.0.1:8000`.
-* `ui/engine_api.py`: Dispatches HTTP calls directly to `chaturanga` functions and logs an execution trace.
-* `ui/scenarios.py`: Provides 7 curated board states demonstrating complex rule scenarios.
-* `ui/static/`: Interactive dark-mode frontend featuring square highlighting, move history, threat maps, and live board tensor inspection.
-
-#### `mcts.py`
-Monte Carlo Tree Search algorithm specialized for AlphaZero:
-* `Node`: Tracks visit counts ($N$), accumulated value ($W$), mean value ($Q = W/N$), prior probability ($P$), parent, and child edges.
-* `get_puct_value()`: Implements the Polynomial Upper Confidence Tree (PUCT) formula:
-  $$\text{PUCT} = Q + c_{\text{puct}} \cdot P \cdot \frac{\sqrt{N_{\text{parent}}}}{1 + N}$$
-* `search()`: 4-step search loop (Selection $\to$ Expansion $\to$ Evaluation $\to$ Backpropagation).
-* `get_best_move()`: Selects the most robust action according to highest visit count ($N$).
-* `dummy_evaluate()`: Random-uniform prior and scalar placeholder enabling full tree exploration before PyTorch model training.
-
-#### `test_mcts.py`
-Smoke test verifying tree node expansion, PUCT selection, leaf evaluation, and action selection over 50 simulations from the starting board.
-
-#### `validity_test.py`
-High-speed random playout fuzz testing script. Plays full games to completion with random moves and strictly validates 7 categories of game invariants after every single ply.
-
-#### `perft.py`
-Performance verification tool supporting standard depth search, root-move breakdown (`--divide`), and integrated playout fuzz testing (`--fuzz`).
+* **`chaturanga/pieces.py`**: Stores pieces as signed `int8` constants (`EMPTY = 0`, White `+1..+6` for `PAWN, HORSE, ELEPHANT, CHARIOT, MINISTER, KING`, Black `-1..-6`), along with Sanskrit names (`PADATI`, `ASHWA`, `GAJA`, `RATHA`, `MANTRI`, `RAJA`) and ASCII/Unicode symbols.
+* **`chaturanga/board.py`**: `create_starting_board()` returns the initial `(8, 8) np.int8` array. `make_move(board, start_pos, end_pos)` copies the board before applying moves (safe for MCTS rollouts) and promotes any Pawn reaching row `0` (White) or row `7` (Black) to a Minister.
+* **`chaturanga/rules.py`**: Holds `find_king`, raycast `is_in_check`, `get_all_legal_moves`, `get_game_outcome` (checking Bare King, Checkmate, and Stalemate), and `perft`.
+* **`chaturanga/env.py`**: Wraps `board`, `current_player`, and `move_history` in `ChaturangaEnv` with `reset()`, `step(move)`, `copy()`, and cached legal moves/outcomes per ply.
+* **`ui/`**: Built with Python's standard library `http.server` so it runs offline with no JS build step. Exposes legal move highlighting, pseudo-legal rejection overlays, `is_in_check` threat maps, Perft divide, `int8` board views, and an opponent dropdown with a live MCTS simulation slider for `ChaturangZero`.
 
 ---
 
-## Quickstart & Usage Instructions
+## Quickstart & Usage
 
 ### 1. Installation
-Ensure Python 3.8+ is installed. Clone the repository and install requirements:
+Requires Python 3.8+ with `numpy` and `torch`:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Visual Engine Explorer (Browser UI)
-Launch the browser UI that visualizes every part of the engine — board, legal moves, pseudo-legal vs legal filtering, check/threat maps, terminal states, perft, and raw board tensors:
+### 2. Browser UI (Engine Explorer & Bot Arena)
+Start the local web server:
 ```bash
-# Standard launch
+# Default launch (http://127.0.0.1:8000, default 40 MCTS sims for ChaturangZero)
 python3 ui/server.py
 
-# Launch with trained AI and custom MCTS depth (e.g. 300 simulations)
-python3 ui/server.py --port 8000 --sims 300
+# Custom port and initial simulation count
+python3 ui/server.py --port 8000 --sims 100
 ```
-Open **`http://127.0.0.1:8000`** in your browser.
-* Toggle AI Play mode to play against the trained neural network.
-* Press <kbd>1</kbd>–<kbd>7</kbd> to load preset demo scenarios:
-  1. Starting Ashtapada
-  2. Checkmate in 1 (Chariot + Minister battery)
-  3. Stalemate (demonstrates stalemated player WINNING)
-  4. Bare King (capturing second-to-last piece triggers instant win)
-  5. Absolute Pin (piece blocked from exposing King)
-  6. Pawn Promotion (pawn reaches 8th rank $\to$ Minister)
-  7. Leapers in a Crowd (Elephants and Horses jumping over blocked lines)
-* Press <kbd>?</kbd> for the keyboard shortcut guide.
-* See [ui/README.md](ui/README.md) for deeper UI documentation.
+Once open in your browser:
+* **Play vs Bot / ChaturangZero:** Choose `ChaturangZero` (selected by default) or one of the Scholar Bots (`Chanakya`, `Aryabhata`, `Panini`, `Novice`). Use the **Sims** slider to adjust MCTS lookahead on the fly and toggle **Play vs Bot (Black)** or press <kbd>Z</kbd> for single bot moves.
+* **Demo Positions:** Press <kbd>1</kbd>–<kbd>7</kbd> to jump to preset states (Starting Ashtapada, Mate in 1, Stalemate-Win, Bare King, Pin, Pawn Promotion, Leapers in a Crowd).
+* Press <kbd>?</kbd> for the full keyboard shortcut modal. See [`ui/README.md`](ui/README.md) for more UI notes.
 
 ### 3. Interactive Terminal Play
-Play from the terminal (human vs. human, or human vs. trained AI):
+Play human vs. human or human vs. `ChaturangZero` in the terminal:
 ```bash
-# 2-player human hot-seat
+# Two-player local game
 python3 play.py
 
-# Play against the trained AI (supports --sims)
-python3 play.py --ai --sims 200
+# Play as White against trained AI (adjust lookahead with --sims)
+python3 play.py --ai --sims 100
 ```
-* Enter moves as: `start_row,start_col end_row,end_col` (e.g., `6,4 5,4`).
-* Type `perft <depth>` during play to run an instant node count from the current board.
-* Type `q` to quit.
+* Enter moves as `start_row,start_col end_row,end_col` (for example, `6,4 5,4`).
+* Type `perft <depth>` mid-game to inspect leaf node counts, or `q` to quit.
 
-### 4. Benchmark vs. Random Bot
-Run automated 10-game evaluations against a uniform random opponent:
+### 4. Benchmarking & Value Discovery
+Run the evaluation scripts from the repo root:
 ```bash
-# Run 10 games with 40 MCTS simulations per move
-python3 test_vs_random.py 40 10
+# 8-game Scholar Bots tournament (appends summary to report.txt)
+python3 benchmark_bots.py --games-per-bot 2 --sims 120 --max-plies 220
+
+# Benchmark against uniform random play (e.g., 40 sims over 10 games)
+python3 misc/test_vs_random.py 40 10
+
+# Compute empty-board mobility piece values and centrality matrix
+python3 misc/discover_values.py
 ```
 
-### 5. Autonomous Value Discovery
-Calculate piece mobility ratios and the board centrality heatmap:
+### 5. Automated Tests, Invariant Fuzzing & Perft
+Run the `unittest` suite:
 ```bash
-python3 discover_values.py
-```
-
-### 4. AlphaZero MCTS Agent (Milestone 2 Smoke Test)
-Run the PUCT-guided Monte Carlo Tree Search agent:
-```bash
-python3 test_mcts.py
-```
-Performs 50 MCTS lookahead simulations guided by PUCT node values and selects the best move based on visit counts ($N$).
-
-### 5. Automated Unit Testing
-Run the automated test suite verifying Perft node counts and invariant rollouts:
-```bash
-# Standard library unittest (zero dependencies required)
 python3 -m unittest discover -v tests
-
-# Or with pytest (if installed)
-pytest -v
 ```
 
-### 6. Random Playout Fuzz Testing & Invariant Validation
-Simulate complete random games to termination, asserting strict mathematical and ruleset invariants after **every single move**:
+Run standalone Perft divide or random playout invariant checks:
 ```bash
-# Run 100 random games with up to 300 plies each
-python3 validity_test.py -n 100 -m 300
+# Perft depth 2 with move-by-move divide
+python3 tests/perft.py --depth 2 --divide
 
-# Run with a fixed seed and verbose per-game output
-python3 validity_test.py -n 10 -m 200 --seed 42 --verbose
+# Fuzz 100 random games up to 300 plies each
+python3 tests/validity_test.py -n 100 -m 300
 ```
 
-#### CLI Parameters for `validity_test.py`:
-| Parameter | Short | Default | Description |
-|---|:---:|:---:|---|
-| `--num-games` | `-n` | `100` | Number of complete games to simulate |
-| `--max-moves` | `-m` | `300` | Maximum half-moves (plies) per game before cutoff draw |
-| `--seed` | `-s` | `None` | Random seed for deterministic reproducibility |
-| `--perft-depth` | `-p` | `0` | Run Perft benchmark at given depth before rollouts |
-| `--verbose` | `-v` | `False` | Print winner, plies, and reason for every individual game |
-| `--quiet` | `-q` | `False` | Suppress progress logs and output summary table only |
+`validity_test.py` checks 7 invariants after every single ply:
+1. **King Integrity:** Exactly 1 White King (`+6`) and 1 Black King (`-6`) exist at all times.
+2. **Move Legality:** Executed moves come directly from `get_all_legal_moves()`.
+3. **Check Safety:** No move leaves or places the moving player's King in check.
+4. **Pawn Promotion:** No Pawns remain on back ranks (`0` for White, `7` for Black).
+5. **Material Monotonicity:** Total pieces never exceed 32 and only decrease on captures.
+6. **Board Geometry:** Board remains `(8, 8)` with values in `[-6, 6]`.
+7. **Terminal Soundness:** Bare King, Checkmate (`-1`), and Stalemate (`+1`) terminate properly.
 
-#### The 7 Invariants Asserted at Every Ply:
-1. **King Integrity**: Exactly 1 White King (`+6`) and 1 Black King (`-6`) exist on the board at all times; Kings can never be captured.
-2. **Move Legality**: The executed move was strictly in `get_all_legal_moves()`; source square had a friendly piece, target square did not.
-3. **Check Safety**: A player's move can **never** leave or place their own King in check (absolute pins and check evasion strictly enforced).
-4. **Pawn Promotion**: No Pawns ever exist on back ranks (row 0 for White, row 7 for Black); always promoted strictly and automatically to a Minister.
-5. **Material Monotonicity**: Total pieces $\le 32$, non-increasing. Moving player's piece count is unchanged; opponent's is unchanged or decreased by 1 on capture.
-6. **Board Geometry**: Array strictly $(8, 8)$ with values in range $[-6, 6]$.
-7. **Terminal Soundness**: Bare King (opponent left with only their King) terminates immediately with victory; Stalemated player wins (+1); Checkmated player loses (-1).
-
-### 7. Perft Benchmarks & Move Divide
-Calculate exact leaf node counts to verify move generator completeness:
-```bash
-# Standard Perft count
-python3 perft.py --depth 2
-
-# Perft Divide: Displays child node counts broken down by root move
-python3 perft.py --depth 2 --divide
-
-# Combined Perft + Fuzz Testing
-python3 perft.py --depth 2 --fuzz 50 --max-moves 200
-```
-
-### 8. Using as a Python Package
+### 6. Python Package Usage
 ```python
-from chaturanga import ChaturangaEnv, make_move, get_all_legal_moves
+from chaturanga import ChaturangaEnv
 
-# Initialize environment
 env = ChaturangaEnv()
-env.render()
-
-# Retrieve legal moves: [((r1, c1), (r2, c2)), ...]
 legal_moves = env.get_legal_moves()
 print(f"Available legal moves: {len(legal_moves)}")
 
-# Execute a move: returns (new_board, outcome, done)
 board, outcome, done = env.step(legal_moves[0])
 env.render()
 ```
 
 ---
 
-## Comprehensive Study Guide: How the System Works
+## System Design: How Everything Fits Together
 
 ### A. Board Representations (2D Matrix vs. 3D Tensor)
+The codebase separates fast engine simulation from neural network input:
+1. **2D Engine Matrix (`(8, 8) np.int8`):** Used by `chaturanga/` and the minimax bots for cheap array copies and integer comparisons (`+1..+6` White, `-1..-6` Black, `0` empty).
+2. **3D Neural Tensor (`(13, 8, 8) torch.float32`):** Built in `neural/encoder.py`.
+   * **Channels 0–5:** One-hot binary planes for White `P, H, E, R, M, K`.
+   * **Channels 6–11:** One-hot binary planes for Black `P, H, E, R, M, K`.
+   * **Channel 12:** Constant turn plane (`1.0` if White to move, `0.0` if Black).
+   * Using one-hot planes avoids feeding numeric encodings (`1..6`) into conv filters where arithmetic would treat a Minister (`5`) as `Pawn (1) + Chariot (4)`, and tiling the turn flag spatially lets early `3×3` conv layers condition on turn everywhere.
 
-The project manages two representations of the board:
+### B. Action Space & Illegal Move Masking (4,096 Dimensions)
+Moves are flattened into a fixed `64 × 64 = 4,096` vector:
+$$\text{action} = (r_{\text{start}} \times 8 + c_{\text{start}}) \times 64 + (r_{\text{end}} \times 8 + c_{\text{end}})$$
+Only ~15–35 of those 4,096 actions are legal in a typical Chaturanga position. Both inference (`ChaturangaNet.forward`) and loss computation (`ChaturangZeroLoss`) mask illegal indices to `-1e9` before `log_softmax` so illegal moves never receive probability mass or noisy gradients.
 
-#### 1. Internal Engine Representation (2D Matrix)
-Used by the rules engine for fast arithmetic, move generation, and state transitions.
-* **Type**: `np.ndarray` of shape `(8, 8)`, `dtype=np.int8`.
-* **Values**:
-  * `0`: Empty square
-  * `+1` to `+6`: White pieces (`PAWN=1`, `HORSE=2`, `ELEPHANT=3`, `CHARIOT=4`, `MINISTER=5`, `KING=6`)
-  * `-1` to `-6`: Black pieces (`-PAWN=-1`, `-HORSE=-2`, etc.)
+### C. Move Generation & Raycast Check Detection
+Move generation filters pseudo-legal piece moves (`chaturanga.moves`) by simulating each candidate with `make_move` and discarding any that leave the King in check.
 
-#### 2. Deep Learning / AlphaZero Representation (3D Tensor)
-Used by the Convolutional Neural Network (CNN/ResNet) for Policy and Value prediction.
-* **Shape**: $(13, 8, 8)$ (13 binary feature planes of $8 \times 8$).
-* **Why not a single 2D matrix?** If piece values 1–6 are fed into a CNN, the convolutional filters perform multiplication and addition. The network would mistakenly assume an Elephant (`3`) is worth three Pawns (`1`), or that a King (`6`) equals a Horse (`2`) plus a Chariot (`4`). One-hot planes isolate each piece type into an independent spatial feature map.
-* **Channel Breakdown**:
-  * **Channels 0–5**: White pieces (Pawns, Horses, Elephants, Chariots, Ministers, King).
-  * **Channels 6–11**: Black pieces (Pawns, Horses, Elephants, Chariots, Ministers, King).
-  * **Channel 12**: **Turn Indicator Plane** (Entire $8 \times 8$ grid filled with `1.0` if White's turn, `0.0` if Black's turn).
-* **Why a Turn Plane instead of a Boolean?** 2D Convolutions require all inputs to share the exact same spatial dimensions $(8, 8)$. By tiling the turn indicator across an $8 \times 8$ plane, the convolutional kernels can combine piece positions with tempo/turn at every square in the very first layer without requiring auxiliary inputs.
+Because `is_in_check` is called for every candidate move in search and training, scanning all 64 enemy squares and allocating move lists per ply would dominate runtime. Instead, `is_in_check` probes outward directly from the King's square:
+1. 4 orthogonal rays until first blocker (checking for enemy Chariots),
+2. 8 Knight jump offsets (enemy Horses),
+3. 4 2-square diagonal leap offsets (enemy Elephants),
+4. 4 adjacent diagonals (enemy Ministers),
+5. 8 adjacent squares (enemy King), and
+6. 2 forward-attack squares (enemy Pawns).
 
----
+### D. Testing Strategy: Perft vs. Random Playout Fuzzing
 
-### B. Action Space Representation (4,096 Dimensions)
-
-To keep the AlphaZero action space simple and computationally feasible on consumer hardware, actions are modeled as a **flattened from-square to to-square mapping**:
-
-$$\text{Action Space Size} = 64 \times 64 = 4096$$
-
-* Square index: `sq = r * 8 + c` (where $0 \le \text{sq} < 64$)
-* Action index: `action = start_sq * 64 + end_sq` (where $0 \le \text{action} < 4096$)
-* **Illegal Move Masking**: Out of 4,096 theoretical moves, typically only 15–35 are legal at any turn. Before computing softmax in the Policy Head, illegal action indices are masked with $-\infty$, guaranteeing that the network only samples strictly legal moves.
-
----
-
-### C. Move Generation & Check Detection Pipeline
-
-The move generation pipeline is split into two phases:
-
-```
-[ Board State ]
-       │
-       ▼
-1. Pseudo-Legal Move Generation (chaturanga.moves)
-   - Orthogonal raycasting (Chariots)
-   - L-shaped leaping (Horses)
-   - 2-square diagonal leaping (Elephants)
-   - 1-square diagonal stepping (Ministers)
-   - 8-direction stepping (Kings)
-   - 1-step forward / diagonal capture (Pawns)
-       │
-       ▼
-2. Legal Move Filtering (chaturanga.rules)
-   - For each pseudo-legal move:
-       simulated_board = make_move(board, start, end)
-       if not is_in_check(simulated_board, player):
-           keep move
-       │
-       ▼
-[ Strictly Legal Moves ]
-```
-
-#### Fast Raycast Check Detection Optimization
-In naive engines, `is_in_check` scans all 64 squares, generates full move lists for all enemy pieces, and checks if the King is attacked. This causes thousands of list allocations per turn.
-
-In this engine, `is_in_check` looks **directly outward from the King's coordinates**:
-1. Casts 4 orthogonal rays outward $\to$ if first piece hit is an enemy Chariot, return `True`.
-2. Checks the 8 horse jump squares $\to$ if enemy Horse present, return `True`.
-3. Checks the 4 elephant leap squares $\to$ if enemy Elephant present, return `True`.
-4. Checks the 4 minister diagonal squares $\to$ if enemy Minister present, return `True`.
-5. Checks the 8 adjacent squares $\to$ if enemy King present, return `True`.
-6. Checks the 2 pawn capture squares $\to$ if enemy Pawn present, return `True`.
-
-This reduces check detection from hundreds of loop iterations down to ~25 fast memory lookups, yielding a **50x speedup** across simulations.
-
----
-
-### D. Dual-Layer Testing Philosophy (Perft vs. Fuzzing)
-
-| Feature | Perft (Performance Test) | Random Playout Fuzz Testing |
+| Feature | Perft | Random Playout Fuzzing |
 |---|---|---|
-| **Search Pattern** | **Exhaustive BFS/DFS**: Expands *every single* legal move. | **Monte Carlo Trajectory**: Picks *one random* legal move per step. |
-| **Search Depth** | **Shallow** (depths 1–4). Exponential branching ($b \approx 16$) prevents deep searches. | **Deep** (100–300+ plies per game). |
-| **What it Catches** | **Omission/Addition of moves**: Discrepancies in leap logic, square bounds, or pin detection. | **State corruption over time**: Pawn promotion failures, illegal captures, bare king trigger errors, or crashes. |
-| **Output Type** | Deterministic leaf-node integer (e.g. Depth 1 = 16, Depth 2 = 256). | Pass/Fail assertions across 7 invariants + outcome statistics. |
+| **Traversal** | Exhaustive DFS over every legal branch | Single random legal trajectory per game |
+| **Depth** | Shallow (depths 1–4; `16`, `256` at depths 1–2) | Long (100–300+ plies to termination) |
+| **Catches** | Missing/extra moves, leap bounds, pin bugs | Promotion bugs, Bare King / Stalemate triggers, crashes |
 
 ---
 
-### E. Roadmap to Milestone 2 & AlphaZero
+## Post-Midsem Progress (Milestones 2–4)
 
-* **Milestone 1**: Flawless rule engine, check detection, terminal conditions, unit tests, and browser UI.
-* **Milestone 2 **: 
-  * State tensor converter (`chaturanga/tensor.py`): $8 \times 8 \to (13, 8, 8)$ tensor.
-  * Lightweight PyTorch ResNet (`chaturanga/model.py`): 4–6 residual blocks with dual heads (Policy: 4,096 logits, Value: scalar $\in [-1, 1]$).
-  * PUCT Monte Carlo Tree Search (`chaturanga/mcts.py`): Guided tree expansion using network priors ($P(s, a)$) and node evaluations ($v$) without slow random rollouts.
-* **Milestones 3–4**:
-  * Self-play training pipeline and experience replay buffer.
-  * Continuous loss optimization (MSE value loss + Cross-Entropy policy loss).
-  * Arena benchmarking against baseline players.
+### Pure Self-Play Failure & Draw Collapse
+After finishing the Milestone 1 engine and Milestone 2 network/MCTS setup (`ChaturangaNet` with `4` residual blocks at `64` channels + `NeuralMCTS` using `c_puct = 1.25`), our initial goal was pure self-play reinforcement learning with no heuristics.
+
+In practice, Chaturanga moves much slower than modern chess: Pawns lack an initial double-step, Ministers step 1 diagonal square, and Elephants jump 2 diagonals. Even uniform random games have a median length of 411 plies, and armies take 30–50 plies just to reach each other. Over 30 self-play iterations (15 games/iteration, 450 games total at 20 MCTS sims per move), almost every game (>90%) ended in a 3-fold repetition or turn-cap draw with target reward `z = 0`.
+
+Another bottleneck was network size: `ChaturangaNet` has **8,702,692 parameters**, of which **8,392,704 (96.4%)** come from the dense `Linear(2048 -> 4096)` policy projection. Sequential batch-1 forward passes through an 8.70M-parameter model made game generation slow on CPU and Colab, limiting us to a few hundred games—nowhere near enough data for a model that size to learn piece values from sparse terminal rewards. Its value head flattened around `+0.1330` regardless of material balance, and it scored `0W-1L-9D` against random play at 20 sims.
+
+### Mobility-Derived Piece Values & Supervised Bootstrapping
+To see if the network and MCTS could still play coherent Chaturanga with a working value signal, we derived initial piece weights from the move rules rather than hand-picking chess values:
+* [`misc/discover_values.py`](misc/discover_values.py) measures average empty-board legal moves (`Pawn: 1.64`, `Elephant: 2.25`, `Minister: 3.06`, `Horse: 5.25`, `Chariot: 14.00`), applies sublinear dampening (`(avg / base) ** 0.85`) to adjust for slider crowding (`1.00, 1.31, 1.70, 2.69, 6.19`), and normalizes a `[0.00, 0.20]` central square bonus.
+* After slight manual calibration (`[P: 1.0, E: 1.5, M: 2.0, H: 3.0, C: 5.0]`), [`training/bootstrap_train.py`](training/bootstrap_train.py) generated 150 curriculum games using a 2-ply lookahead teacher (`eps = 0.15`, ~10,000 moves) and fine-tuned the CNN for 12 epochs (`4.0 * MSE(v, z) + masked CrossEntropy(p, pi)`). Value loss fell from `0.1752` to `0.0099` and policy loss from `2.7178` to `0.2218`.
+
+### Scholar Heuristic Bots & Tournament Benchmarks
+To test the bootstrapped model against more structured opponents than random moves, [`bots/scholar_bots.py`](bots/scholar_bots.py) implements four `BasePlayer` baselines:
+* **NoviceBot:** 80% random legal moves, 20% greedy captures.
+* **ChanakyaBot:** Depth-2 alpha-beta minimax focused on material, checks, and pushing toward Bare King.
+* **AryabhataBot:** Depth-2 alpha-beta minimax using piece-square tables, Pawn advancement, and Gaja mobility.
+* **PaniniBot:** Depth-2 alpha-beta minimax using single-pass attack/defense maps to penalize hanging pieces and exposed Kings.
+
+### Observed Results & Current Limitations
+* **Material Value Probes ([`report.txt`](report.txt)):** From the starting position, net value deltas (`White Up 1 piece - White Down 1 piece`) became positive and monotonic across every piece type: Pawn (`+0.0803`), Minister (`+0.0939`), Elephant (`+0.1383`), Horse (`+0.4687`), Chariot (`+0.4750`), and Major `+Ratha+Ashwa` (`+0.9598`).
+* **vs. Uniform Random (10 games):** Jumped from `0W-1L-9D` (pure self-play, 20 sims) to **90% win rate (`9W-0L-1D`)** at both 40 sims and 200 sims.
+* **vs. Scholar Bots (8 games, 1 White / 1 Black per bot):**
+
+| Opponent | AI Wins | Bot Wins | Draws | AI Win Rate |
+|---|:---:|:---:|:---:|:---:|
+| NoviceBot | 2 | 0 | 0 | 100.0% |
+| ChanakyaBot | 0 | 0 | 2 | 0.0% |
+| AryabhataBot | 0 | 0 | 2 | 0.0% |
+| PaniniBot | 0 | 1 | 1 | 0.0% |
+| **Total** | **2 (25.0%)** | **1 (12.5%)** | **5 (62.5%)** | **25.0% (87.5% unbeaten)** |
+
+* **Limitations & Next Steps:**
+  * **Repetition Draws (62.5%):** Scholar Bots have no move-history state and oscillate between equal-scoring moves, while neutral `V = 0.0` draw evaluations give MCTS no incentive to refuse repetitions.
+  * **Simulation Compute Cost:** On CPU, 300 sims per move requires roughly 30,000 forward passes per game (~4–5 minutes/game), while low simulation budgets (20–30 sims) search too shallowly and fall into depth-2 minimax traps.
+  * **Model Size vs. Data:** Replacing the 8.70M-parameter network (especially the 8.39M dense policy head) with a compact CNN on the order of a few thousand parameters would make forward passes much faster and enable training across thousands of self-play games.
