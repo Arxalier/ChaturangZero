@@ -1,0 +1,15 @@
+{
+  "format": "round-robin",
+  "games_per_pair": 20,
+  "max_plies": 120,
+  "opening_plies": 2,
+  "seed": 0,
+  "players": {
+    "Random": "random",
+    "Greedy-1ply": "greedy",
+    "Minimax-d2": "minimax:depth=2",
+    "gen_0": "gen_0=az:ckpt=checkpoints/local_run/gen_0.pt,sims=25,temp=0.05",
+    "gen_mid": "gen_mid=az:ckpt=checkpoints/local_run/gen_mid.pt,sims=25,temp=0.05",
+    "gen_final": "gen_final=az:ckpt=checkpoints/local_run/gen_final.pt,sims=25,temp=0.05"
+  }
+}

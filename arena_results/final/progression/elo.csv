@@ -1,0 +1,7 @@
+player,elo,ci_low,ci_high,games
+Minimax-d2,623.5,536.1,742.1,100
+Greedy-1ply,396.0,341.0,461.7,100
+gen_final,208.6,154.3,268.7,100
+gen_0,88.4,29.7,143.7,100
+pureRL-local,58.6,11.6,102.3,100
+Random,0.0,0.0,0.0,100

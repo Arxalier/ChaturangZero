@@ -1,0 +1,19 @@
+{
+  "format": "round-robin",
+  "games_per_pair": 20,
+  "max_plies": 300,
+  "opening_plies": 2,
+  "seed": 0,
+  "players": {
+    "Random": "random",
+    "Greedy-1ply": "greedy",
+    "Minimax-d2": "minimax:depth=2",
+    "NoviceBot": "novice",
+    "AryabhataBot": "aryabhata",
+    "ChanakyaBot": "chanakya",
+    "PaniniBot": "panini",
+    "AZ-Master": "AZ-Master=az-master:ckpt=checkpoints/gen_final.pt",
+    "AZ-Intermediate": "AZ-Intermediate=az-intermediate:ckpt=checkpoints/gen_final.pt",
+    "AZ-Novice": "AZ-Novice=az-novice:ckpt=checkpoints/gen_final.pt"
+  }
+}

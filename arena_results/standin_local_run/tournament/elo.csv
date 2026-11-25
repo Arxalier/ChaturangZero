@@ -1,0 +1,7 @@
+player,elo,ci_low,ci_high,games
+Minimax-d2,270.2,227.2,321.7,100
+Greedy-1ply,217.3,177.7,262.7,100
+AZ-Intermediate,43.3,18.4,68.3,100
+AZ-Master,31.1,-1.6,57.4,100
+AZ-Novice,3.1,-19.0,28.3,100
+Random,0.0,0.0,0.0,100

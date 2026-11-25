@@ -1,0 +1,6 @@
+{
+  "ckpt_dir": "checkpoints/local_run",
+  "games_per_pair": 20,
+  "quick": false,
+  "minutes": 47.48243141571681
+}

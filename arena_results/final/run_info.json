@@ -1,0 +1,11 @@
+{
+  "ckpt_dir": "checkpoints",
+  "games_per_pair": 20,
+  "max_plies": 300,
+  "extra_ckpt": [
+    "pureRL-local=checkpoints/local_run/gen_final.pt"
+  ],
+  "quick": false,
+  "minutes": 106.0,
+  "note": "full run, then tournament + Elo tiers rerun after the scholar bots landed (earlier games between unchanged players reused); progression and ablations from the full run"
+}
